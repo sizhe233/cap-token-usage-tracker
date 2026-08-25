@@ -124,6 +124,9 @@ func TestResourceDataRoutesRequireAuthenticatedSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	now := nowUTC()
+	rate := ExchangeRateResponse{SchemaVersion: 1, Base: "USD", Quote: "CNY", Rate: 7.2, EffectiveAt: now, FetchedAt: now, Source: "test"}
+	runtime.exchangeRates = &exchangeRateService{cached: &rate, freshUntil: now.Add(time.Hour), staleUntil: now.Add(time.Hour), now: func() time.Time { return now }}
 	if _, err := runtime.registerManagement(registration); err != nil {
 		t.Fatal(err)
 	}
@@ -174,11 +177,8 @@ func TestResourceDataRoutesRequireAuthenticatedSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range paths {
-		if path == runtime.routes.resourceExchangeRatePath {
-			continue
-		}
-		if response := call(http.MethodGet, path, session); response.StatusCode == http.StatusUnauthorized {
-			t.Fatalf("valid session was rejected by %s", path)
+		if response := call(http.MethodGet, path, session); response.StatusCode != http.StatusOK {
+			t.Fatalf("valid session response from %s = %d body=%s", path, response.StatusCode, response.Body)
 		}
 	}
 
