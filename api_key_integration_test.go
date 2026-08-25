@@ -39,6 +39,9 @@ func TestAPIKeyTrackingRedactionRevealFilteringAndBackup(t *testing.T) {
 			resourceRequestsPath:     "/v0/resource/plugins/test/requests",
 			resourceCostsPath:        "/v0/resource/plugins/test/costs",
 			fullModeDataPath:         "/v0/resource/plugins/test/full-mode/data",
+			resourcePricesPath:       "/v0/resource/plugins/test/prices",
+			resourcePreferencesPath:  "/v0/resource/plugins/test/preferences",
+			resourceExchangeRatePath: "/v0/resource/plugins/test/exchange-rate",
 		},
 	}
 	defer runtime.shutdown()
@@ -110,30 +113,25 @@ func TestAPIKeyTrackingRedactionRevealFilteringAndBackup(t *testing.T) {
 		return response
 	}
 
-	ordinary := call(runtime.routes.resourceStatsPath, url.Values{"range": {"24h"}}, "")
-	if ordinary.StatusCode != http.StatusOK {
-		t.Fatalf("ordinary stats: %+v", ordinary)
-	}
-	for _, forbidden := range []string{keyA, keyB, `"api_key"`, `"api_key_hash"`, `"api_key_generation"`, `"api_key_ref"`, `"api_key_status"`, `"api_keys"`} {
-		if bytes.Contains(ordinary.Body, []byte(forbidden)) {
-			t.Fatalf("ordinary stats leaked %q: %s", forbidden, ordinary.Body)
-		}
-	}
-
-	for _, path := range []string{runtime.routes.resourceStatsInitialPath, runtime.routes.resourceStatsTrendPath, runtime.routes.resourceStatsGroupsPath} {
+	for _, path := range []string{
+		runtime.routes.resourceStatsPath,
+		runtime.routes.resourceStatsInitialPath,
+		runtime.routes.resourceStatsTrendPath,
+		runtime.routes.resourceStatsGroupsPath,
+		runtime.routes.resourceRequestsPath,
+		runtime.routes.resourceCostsPath,
+		runtime.routes.resourcePricesPath,
+		runtime.routes.resourcePreferencesPath,
+		runtime.routes.resourceExchangeRatePath,
+	} {
 		query := url.Values{"range": {"24h"}}
 		if path == runtime.routes.resourceStatsGroupsPath {
 			query.Set("offset", "0")
 			query.Set("limit", "100")
 		}
 		response := call(path, query, "")
-		if response.StatusCode != http.StatusOK {
-			t.Fatalf("ordinary compact stats %s: %+v", path, response)
-		}
-		for _, forbidden := range []string{keyA, keyB, `"api_key"`, `"api_key_hash"`, `"api_key_generation"`, `"api_key_ref"`, `"api_key_status"`, `"api_keys"`} {
-			if bytes.Contains(response.Body, []byte(forbidden)) {
-				t.Fatalf("ordinary compact stats %s leaked %q: %s", path, forbidden, response.Body)
-			}
+		if response.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("unauthenticated resource %s status = %d body=%s", path, response.StatusCode, response.Body)
 		}
 	}
 

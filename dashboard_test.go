@@ -777,8 +777,8 @@ func TestFullModeUsesSeparateProtectedDashboard(t *testing.T) {
 	if !strings.Contains(dashboardHTML, `managementBase+'/full-mode/session'`) || !strings.Contains(dashboardHTML, `method:'POST'`) || !strings.Contains(dashboardHTML, `Authorization':'Bearer '+key`) {
 		t.Fatal("full-mode dialog must create an authenticated full-mode session")
 	}
-	if !strings.Contains(dashboardHTML, `resourceBase+'/full-dashboard#session='+encodeURIComponent(session)`) || strings.Contains(dashboardHTML, `fullModeManagementKey=key`) {
-		t.Fatal("homepage must navigate with the opaque session token without retaining the management key")
+	if !strings.Contains(dashboardHTML, `fullModeSession=session`) || !strings.Contains(dashboardHTML, `startDashboard()`) || strings.Contains(dashboardHTML, `fullModeManagementKey=key`) {
+		t.Fatal("dashboard must retain only the opaque in-memory session and start after authentication")
 	}
 	for _, forbidden := range []string{
 		`id="pricingButton"`, `id="pricingDialog"`, `id="priceList"`, `id="savePricing"`, `id="syncPrices"`,
@@ -790,11 +790,11 @@ func TestFullModeUsesSeparateProtectedDashboard(t *testing.T) {
 			t.Fatalf("normal dashboard must not expose pricing UI %q", forbidden)
 		}
 	}
-	if !strings.Contains(dashboardHTML, `function initializePricingSelectEnhancement(){var list=document.getElementById('priceList');if(!list)return;`) {
-		t.Fatal("normal dashboard must skip pricing select initialization when full-mode pricing UI is absent")
+	if !strings.Contains(dashboardHTML, `function startDashboard(){if(!fullModeSession){openFullModeDialog();return;}`) {
+		t.Fatal("ordinary dashboard must authenticate before loading resource data")
 	}
-	if !strings.Contains(dashboardHTML, `function openDateRange(){closeActiveDropdown(false);if(typeof closeExportMenu==='function')closeExportMenu();`) {
-		t.Fatal("normal dashboard date range picker must not require the removed export menu script")
+	if !strings.Contains(dashboardHTML, `'X-Full-Mode-Session':fullModeSession`) {
+		t.Fatal("ordinary dashboard must attach the short-lived session to data requests")
 	}
 	for _, required := range []string{`var fullModePage=true`, `button.exitFullMode`, `history.replaceState(null,'',window.location.pathname+window.location.search)`} {
 		if !strings.Contains(fullDashboardHTML, required) {

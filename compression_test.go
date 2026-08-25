@@ -209,6 +209,10 @@ func TestPublicJSONRoutesCompress(t *testing.T) {
 		},
 	}
 	defer runtime.shutdown()
+	session, err := runtime.createFullModeSession()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := store.Record(normalizedUsage{
 		Dimensions:  Dimensions{Model: "gpt-test"},
 		RequestedAt: time.Now().UTC(),
@@ -221,7 +225,7 @@ func TestPublicJSONRoutesCompress(t *testing.T) {
 		raw, err := json.Marshal(pluginapi.ManagementRequest{
 			Method:  http.MethodGet,
 			Path:    path,
-			Headers: http.Header{"Accept-Encoding": []string{"gzip"}},
+			Headers: http.Header{"Accept-Encoding": []string{"gzip"}, "X-Full-Mode-Session": []string{session}},
 			Query:   url.Values{"range": []string{"24h"}},
 		})
 		if err != nil {

@@ -67,6 +67,10 @@ func TestCompactStatsResourcesShapePagingAndMethods(t *testing.T) {
 	if _, err := runtime.registerManagement(registration); err != nil {
 		t.Fatal(err)
 	}
+	session, err := runtime.createFullModeSession()
+	if err != nil {
+		t.Fatal(err)
+	}
 	now := nowUTC().Truncate(5 * time.Minute)
 	for _, usage := range []normalizedUsage{
 		{Dimensions: Dimensions{Provider: "openai", Model: "alpha", Source: "cli"}, RequestedAt: now.Add(-4 * time.Minute), Counters: Counters{Requests: 2, TotalTokens: 20}},
@@ -79,7 +83,7 @@ func TestCompactStatsResourcesShapePagingAndMethods(t *testing.T) {
 	}
 	call := func(method, path string, query url.Values) pluginapi.ManagementResponse {
 		t.Helper()
-		raw, err := json.Marshal(pluginapi.ManagementRequest{Method: method, Path: path, Query: query})
+		raw, err := json.Marshal(pluginapi.ManagementRequest{Method: method, Path: path, Query: query, Headers: http.Header{"X-Full-Mode-Session": []string{session}}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -133,6 +137,11 @@ func TestManagementStatsAndReset(t *testing.T) {
 		pluginID: "test", statsPath: "/v0/management/plugins/test/stats", resetPath: "/v0/management/plugins/test/reset", dashboardPath: "/v0/resource/plugins/test/dashboard", resourceStatsPath: "/v0/resource/plugins/test/stats", resourceRequestsPath: "/v0/resource/plugins/test/requests", resourceCostsPath: "/v0/resource/plugins/test/costs", resourceExchangeRatePath: "/v0/resource/plugins/test/exchange-rate", pricesPath: "/v0/management/plugins/test/prices", priceSyncPath: "/v0/management/plugins/test/prices/sync", resourcePricesPath: "/v0/resource/plugins/test/prices", resourcePreferencesPath: "/v0/resource/plugins/test/preferences",
 	}}
 	defer runtime.shutdown()
+	session, err := runtime.createFullModeSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	resourceHeaders := http.Header{"X-Full-Mode-Session": []string{session}}
 	if err := store.Record(normalizedUsage{Dimensions: Dimensions{Model: "m"}, RequestedAt: nowUTC(), Counters: Counters{Requests: 1, TotalTokens: 3}}); err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +158,7 @@ func TestManagementStatsAndReset(t *testing.T) {
 		t.Fatal("missing no-store header")
 	}
 
-	resourceStatsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceStatsPath, Query: url.Values{"range": []string{"24h"}}})
+	resourceStatsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceStatsPath, Headers: resourceHeaders, Query: url.Values{"range": []string{"24h"}}})
 	response, err = runtime.handleManagement(resourceStatsRequest)
 	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"total_tokens":3`) {
 		t.Fatalf("resource stats response: %+v, %v", response, err)
@@ -159,30 +168,30 @@ func TestManagementStatsAndReset(t *testing.T) {
 		"start": []string{time.Now().Add(-time.Hour).Format(time.RFC3339)},
 		"end":   []string{time.Now().Add(time.Hour).Format(time.RFC3339)},
 	}
-	customStatsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceStatsPath, Query: customQuery})
+	customStatsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceStatsPath, Headers: resourceHeaders, Query: customQuery})
 	response, err = runtime.handleManagement(customStatsRequest)
 	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"range":"custom"`) || !strings.Contains(string(response.Body), `"total_tokens":3`) {
 		t.Fatalf("custom stats response: %+v, %v", response, err)
 	}
-	invalidRangeRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceStatsPath, Query: url.Values{"range": []string{"custom"}, "start": []string{time.Now().Format(time.RFC3339)}}})
+	invalidRangeRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceStatsPath, Headers: resourceHeaders, Query: url.Values{"range": []string{"custom"}, "start": []string{time.Now().Format(time.RFC3339)}}})
 	response, err = runtime.handleManagement(invalidRangeRequest)
 	if err != nil || response.StatusCode != http.StatusBadRequest {
 		t.Fatalf("invalid custom range response: %+v, %v", response, err)
 	}
 
-	requestsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceRequestsPath, Query: url.Values{"range": []string{"24h"}, "offset": []string{"0"}, "limit": []string{"20"}, "model": []string{"m"}}})
+	requestsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceRequestsPath, Headers: resourceHeaders, Query: url.Values{"range": []string{"24h"}, "offset": []string{"0"}, "limit": []string{"20"}, "model": []string{"m"}}})
 	response, err = runtime.handleManagement(requestsRequest)
 	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"total":1`) || !strings.Contains(string(response.Body), `"model":"m"`) {
 		t.Fatalf("resource requests response: %+v, %v", response, err)
 	}
 	requestsResultQuery := url.Values{"range": []string{"24h"}, "result": []string{"failed"}}
-	requestsResultRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceRequestsPath, Query: requestsResultQuery})
+	requestsResultRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceRequestsPath, Headers: resourceHeaders, Query: requestsResultQuery})
 	response, err = runtime.handleManagement(requestsResultRequest)
 	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"total":0`) {
 		t.Fatalf("filtered resource requests response: %+v, %v", response, err)
 	}
 	requestsResultQuery.Set("result", "unknown")
-	requestsResultRequest, _ = json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceRequestsPath, Query: requestsResultQuery})
+	requestsResultRequest, _ = json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceRequestsPath, Headers: resourceHeaders, Query: requestsResultQuery})
 	response, err = runtime.handleManagement(requestsResultRequest)
 	if err != nil || response.StatusCode != http.StatusBadRequest {
 		t.Fatalf("invalid request result response: %+v, %v", response, err)
@@ -194,23 +203,23 @@ func TestManagementStatsAndReset(t *testing.T) {
 	customRequestsQuery.Set("offset", "0")
 	customRequestsQuery.Set("limit", "20")
 	customRequestsQuery.Set("model", "m")
-	customRequestsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceRequestsPath, Query: customRequestsQuery})
+	customRequestsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceRequestsPath, Headers: resourceHeaders, Query: customRequestsQuery})
 	response, err = runtime.handleManagement(customRequestsRequest)
 	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"range":"custom"`) || !strings.Contains(string(response.Body), `"total":1`) {
 		t.Fatalf("custom requests response: %+v, %v", response, err)
 	}
 
-	pricesRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourcePricesPath})
+	pricesRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourcePricesPath, Headers: resourceHeaders})
 	response, err = runtime.handleManagement(pricesRequest)
 	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"prices":{}`) {
 		t.Fatalf("empty prices response: %+v, %v", response, err)
 	}
-	preferencesRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourcePreferencesPath})
+	preferencesRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourcePreferencesPath, Headers: resourceHeaders})
 	response, err = runtime.handleManagement(preferencesRequest)
 	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"request_page_size":100`) || !strings.Contains(string(response.Body), `"hidden_request_columns":[]`) || !strings.Contains(string(response.Body), `"time_range_mode":"custom"`) {
 		t.Fatalf("default preferences response: %+v, %v", response, err)
 	}
-	savePreferencesRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourcePreferencesPath, Query: url.Values{"save": []string{"1"}, "request_page_size": []string{"50"}, "dimension_page_size": []string{"200"}, "hidden_request_column": []string{"source"}, "hidden_dimension_column": []string{"provider"}, "time_range_mode": []string{"last_7_days"}}})
+	savePreferencesRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourcePreferencesPath, Headers: resourceHeaders, Query: url.Values{"save": []string{"1"}, "request_page_size": []string{"50"}, "dimension_page_size": []string{"200"}, "hidden_request_column": []string{"source"}, "hidden_dimension_column": []string{"provider"}, "time_range_mode": []string{"last_7_days"}}})
 	response, err = runtime.handleManagement(savePreferencesRequest)
 	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"request_page_size":50`) || !strings.Contains(string(response.Body), `"hidden_dimension_columns":["provider"]`) {
 		t.Fatalf("save preferences response: %+v, %v", response, err)
@@ -229,12 +238,12 @@ func TestManagementStatsAndReset(t *testing.T) {
 	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"output":10`) {
 		t.Fatalf("persisted prices response: %+v, %v", response, err)
 	}
-	costsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceCostsPath, Query: url.Values{"range": []string{"24h"}}})
+	costsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceCostsPath, Headers: resourceHeaders, Query: url.Values{"range": []string{"24h"}}})
 	response, err = runtime.handleManagement(costsRequest)
 	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"priced_requests":1`) || !strings.Contains(string(response.Body), `"estimate_basis":"current_price_book"`) {
 		t.Fatalf("resource costs response: %+v, %v", response, err)
 	}
-	customCostsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceCostsPath, Query: customQuery})
+	customCostsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceCostsPath, Headers: resourceHeaders, Query: customQuery})
 	response, err = runtime.handleManagement(customCostsRequest)
 	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"range":"custom"`) || !strings.Contains(string(response.Body), `"priced_requests":1`) {
 		t.Fatalf("custom costs response: %+v, %v", response, err)
@@ -279,7 +288,7 @@ func TestManagementStatsAndReset(t *testing.T) {
 		t.Fatalf("empty sync models status = %d body=%s", response.StatusCode, response.Body)
 	}
 
-	badRequestsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceRequestsPath, Query: url.Values{"offset": []string{"bad"}}})
+	badRequestsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceRequestsPath, Headers: resourceHeaders, Query: url.Values{"offset": []string{"bad"}}})
 	response, _ = runtime.handleManagement(badRequestsRequest)
 	if response.StatusCode != http.StatusBadRequest {
 		t.Fatalf("bad requests query status = %d", response.StatusCode)
@@ -340,9 +349,14 @@ func TestDashboardPreferencesResourceValidation(t *testing.T) {
 	}
 	runtime := &pluginRuntime{store: store, config: config, routes: registeredRoutes{pluginID: "test", resourcePreferencesPath: "/v0/resource/plugins/test/preferences"}}
 	defer runtime.shutdown()
+	session, err := runtime.createFullModeSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	resourceHeaders := http.Header{"X-Full-Mode-Session": []string{session}}
 
 	request := func(method string, query url.Values) pluginapi.ManagementResponse {
-		raw, _ := json.Marshal(pluginapi.ManagementRequest{Method: method, Path: runtime.routes.resourcePreferencesPath, Query: query})
+		raw, _ := json.Marshal(pluginapi.ManagementRequest{Method: method, Path: runtime.routes.resourcePreferencesPath, Headers: resourceHeaders, Query: query})
 		response, handleErr := runtime.handleManagement(raw)
 		if handleErr != nil {
 			t.Fatal(handleErr)
@@ -473,6 +487,11 @@ func TestManagementSourceFilterAppliesToStatsRequestsAndCosts(t *testing.T) {
 		pluginID: "test", resourceStatsPath: "/v0/resource/plugins/test/stats", resourceRequestsPath: "/v0/resource/plugins/test/requests", resourceCostsPath: "/v0/resource/plugins/test/costs",
 	}}
 	defer runtime.shutdown()
+	session, err := runtime.createFullModeSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	resourceHeaders := http.Header{"X-Full-Mode-Session": []string{session}}
 	for _, usage := range []normalizedUsage{
 		{Dimensions: Dimensions{Model: "alpha", Source: "cli"}, RequestedAt: nowUTC(), Counters: Counters{Requests: 1, TotalTokens: 3}},
 		{Dimensions: Dimensions{Model: "beta", Source: "web"}, RequestedAt: nowUTC(), Counters: Counters{Requests: 1, TotalTokens: 5}},
@@ -487,7 +506,7 @@ func TestManagementSourceFilterAppliesToStatsRequestsAndCosts(t *testing.T) {
 			query.Set("offset", "0")
 			query.Set("limit", "100")
 		}
-		request, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: path, Query: query})
+		request, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: path, Headers: resourceHeaders, Query: query})
 		response, err := runtime.handleManagement(request)
 		if err != nil || response.StatusCode != http.StatusOK || strings.Contains(string(response.Body), `"source":"web"`) {
 			t.Fatalf("source-filtered %s response: %+v, %v", path, response, err)
@@ -503,7 +522,7 @@ func TestManagementSourceFilterAppliesToStatsRequestsAndCosts(t *testing.T) {
 		}
 	}
 
-	allCosts, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceCostsPath, Query: url.Values{"range": []string{"24h"}}})
+	allCosts, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceCostsPath, Headers: resourceHeaders, Query: url.Values{"range": []string{"24h"}}})
 	response, err := runtime.handleManagement(allCosts)
 	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"requests":2`) {
 		t.Fatalf("unfiltered costs response: %+v, %v", response, err)
@@ -520,6 +539,11 @@ func TestManagementIgnoresLegacyAuthenticationIdentityParameters(t *testing.T) {
 		pluginID: "test", resourceStatsPath: "/v0/resource/plugins/test/stats", resourceRequestsPath: "/v0/resource/plugins/test/requests", resourceCostsPath: "/v0/resource/plugins/test/costs",
 	}}
 	defer runtime.shutdown()
+	session, err := runtime.createFullModeSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	resourceHeaders := http.Header{"X-Full-Mode-Session": []string{session}}
 	for _, usage := range []normalizedUsage{
 		{Dimensions: Dimensions{Model: "alpha", Source: "cli"}, RequestedAt: nowUTC(), Counters: Counters{Requests: 1, TotalTokens: 3}},
 		{Dimensions: Dimensions{Model: "beta", Source: "web"}, RequestedAt: nowUTC(), Counters: Counters{Requests: 1, TotalTokens: 5}},
@@ -534,7 +558,7 @@ func TestManagementIgnoresLegacyAuthenticationIdentityParameters(t *testing.T) {
 			query.Set("offset", "0")
 			query.Set("limit", "100")
 		}
-		request, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: path, Query: query})
+		request, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: path, Headers: resourceHeaders, Query: query})
 		response, err := runtime.handleManagement(request)
 		if err != nil || response.StatusCode != http.StatusOK || strings.Contains(string(response.Body), "\"auth_provider\"") || strings.Contains(string(response.Body), "\"auth_account\"") {
 			t.Fatalf("identity-filtered %s response: %+v, %v", path, response, err)

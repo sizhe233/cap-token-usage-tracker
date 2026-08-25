@@ -340,7 +340,7 @@ func TestFullModeResetRequiresSession(t *testing.T) {
 		t.Fatalf("authorized reset response: %+v, %v", response, err)
 	}
 
-	statsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceStatsPath, Query: map[string][]string{"range": {"24h"}}})
+	statsRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceStatsPath, Headers: http.Header{"X-Full-Mode-Session": []string{session}}, Query: map[string][]string{"range": {"24h"}}})
 	response, err = runtime.handleManagement(statsRequest)
 	if err != nil || response.StatusCode != http.StatusOK || strings.Contains(string(response.Body), "reset-model") {
 		t.Fatalf("stats after reset: %+v, %v", response, err)

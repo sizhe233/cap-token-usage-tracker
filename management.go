@@ -201,6 +201,9 @@ func (r *pluginRuntime) dispatchManagement(request pluginapi.ManagementRequest, 
 	if routes.pluginID == "" {
 		return jsonResponse(http.StatusServiceUnavailable, map[string]any{"error": "management routes are not registered"}), nil
 	}
+	if protectedResourceDataPath(request.Path, routes) && !r.validFullModeSession(fullModeSessionFromRequest(request)) {
+		return jsonResponse(http.StatusUnauthorized, map[string]string{"error": "resource data requires an authenticated session"}), nil
+	}
 
 	switch request.Path {
 	case routes.fullModeSessionPath:
@@ -977,6 +980,23 @@ func pluginIDFromResourceBase(base string) (string, error) {
 		return "", withStatus(400, "invalid plugin ID in resource base path")
 	}
 	return pluginID, nil
+}
+
+func protectedResourceDataPath(path string, routes registeredRoutes) bool {
+	switch path {
+	case routes.resourceStatsPath,
+		routes.resourceStatsInitialPath,
+		routes.resourceStatsTrendPath,
+		routes.resourceStatsGroupsPath,
+		routes.resourceRequestsPath,
+		routes.resourceCostsPath,
+		routes.resourceExchangeRatePath,
+		routes.resourcePricesPath,
+		routes.resourcePreferencesPath:
+		return true
+	default:
+		return false
+	}
 }
 
 func methodNotAllowed(allowed string) pluginapi.ManagementResponse {

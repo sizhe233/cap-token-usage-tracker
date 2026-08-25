@@ -143,12 +143,17 @@ func TestExchangeRateResourceRoute(t *testing.T) {
 			now:     nowUTC,
 		},
 	}
-	request, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceExchangeRatePath})
+	session, err := runtime.createFullModeSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	headers := http.Header{"X-Full-Mode-Session": []string{session}}
+	request, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.resourceExchangeRatePath, Headers: headers})
 	response, err := runtime.handleManagement(request)
 	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"rate":7.25`) {
 		t.Fatalf("exchange-rate response: %+v, %v", response, err)
 	}
-	request, _ = json.Marshal(pluginapi.ManagementRequest{Method: http.MethodPost, Path: runtime.routes.resourceExchangeRatePath})
+	request, _ = json.Marshal(pluginapi.ManagementRequest{Method: http.MethodPost, Path: runtime.routes.resourceExchangeRatePath, Headers: headers})
 	response, err = runtime.handleManagement(request)
 	if err != nil || response.StatusCode != http.StatusMethodNotAllowed || response.Headers.Get("Allow") != http.MethodGet {
 		t.Fatalf("exchange-rate method response: %+v, %v", response, err)
