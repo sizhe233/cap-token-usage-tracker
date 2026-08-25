@@ -201,8 +201,8 @@ func TestAPIKeyTrackingRedactionRevealFilteringAndBackup(t *testing.T) {
 	}
 
 	for _, path := range []string{runtime.routes.resourceStatsPath, runtime.routes.resourceStatsInitialPath, runtime.routes.resourceStatsTrendPath, runtime.routes.resourceStatsGroupsPath, runtime.routes.resourceRequestsPath, runtime.routes.resourceCostsPath} {
-		if response := call(path, filterQuery, ""); response.StatusCode != http.StatusForbidden {
-			t.Fatalf("unauthorized ref filter %s status = %d", path, response.StatusCode)
+		if response := call(path, filterQuery, ""); response.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("unauthenticated ref filter %s status = %d", path, response.StatusCode)
 		}
 		if response := call(path, url.Values{"range": {"24h"}, "api_key_ref": {"INVALID"}}, session); response.StatusCode != http.StatusBadRequest {
 			t.Fatalf("invalid ref filter %s status = %d body=%s", path, response.StatusCode, response.Body)
