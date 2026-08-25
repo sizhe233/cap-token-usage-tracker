@@ -97,14 +97,23 @@ func safeUsageSource(rawSource, apiKey, provider, executorType, authType string)
 		return normalizeDimension(safeURL)
 	}
 
-	// CLIProxyAPI currently uses the selected upstream API key itself as Source
-	// for API-key credentials. Never persist that value. UsageRecord does not
-	// expose the configured base_url, so use the provider's public service URL
-	// when it is known and a non-secret provider identifier otherwise.
-	if isAPIKeyAuth(authType) || sameSecret(source, apiKey) || looksLikeCredential(source) {
-		return normalizeDimension(providerServiceAddress(provider, executorType))
+	// Source is unauthenticated upstream metadata and has historically carried
+	// API keys and account identifiers. Persist only a small allowlist of known
+	// integration labels; collapse every other non-URL value to the provider's
+	// canonical service address or provider identifier.
+	if safeUsageSourceLabel(source) && !isAPIKeyAuth(authType) && !sameSecret(source, apiKey) && !looksLikeCredential(source) {
+		return normalizeDimension(source)
 	}
-	return normalizeDimension(source)
+	return normalizeDimension(providerServiceAddress(provider, executorType))
+}
+
+func safeUsageSourceLabel(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "cli", "web", "api", "sdk", "plugin", "internal":
+		return true
+	default:
+		return false
+	}
 }
 
 func canonicalUsageSource(dimensions Dimensions) string {
@@ -113,9 +122,6 @@ func canonicalUsageSource(dimensions Dimensions) string {
 
 func canonicalUsageSourceWithIdentity(dimensions Dimensions, authProvider, authAccount string) string {
 	source := safeUsageSource(dimensions.Source, "", dimensions.Provider, dimensions.ExecutorType, dimensions.AuthType)
-	if provider, account := displayAuthProvider(authProvider), safeAuthAccount(authAccount); provider != "" && account != "" {
-		return normalizeDimension(provider + "-" + account)
-	}
 	if isOpenAICompatibleProvider(dimensions.Provider, dimensions.ExecutorType) {
 		const prefix = "openai-compatible-"
 		if strings.HasPrefix(strings.ToLower(source), prefix) {

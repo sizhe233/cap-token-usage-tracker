@@ -149,7 +149,6 @@ func (r *pluginRuntime) handleUsage(raw []byte) (map[string]any, error) {
 	if err != nil {
 		return nil, withStatus(400, "%v", err)
 	}
-	r.resolveUsageIdentity(&usage)
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if r.store == nil {

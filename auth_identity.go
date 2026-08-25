@@ -120,17 +120,7 @@ func sanitizeAuthRuntimeMetadata(metadata authRuntimeMetadata) authRuntimeMetada
 
 func identityFromRuntimeMetadata(metadata authRuntimeMetadata, usage Dimensions) usageIdentity {
 	provider := displayAuthProvider(firstNonEmptyIdentity(metadata.Provider, metadata.Type, usage.Provider, usage.ExecutorType))
-	account := safeAuthAccount(metadata.Email)
-	if account == "" && strings.EqualFold(strings.TrimSpace(metadata.AccountType), "oauth") {
-		account = safeAuthAccount(metadata.Account)
-	}
-	if account == "" {
-		account = safeAuthLabel(metadata.Label)
-	}
-	if account == "" {
-		account = safeAuthAccount(sanitizeDimensionsSource(usage).Source)
-	}
-	return usageIdentity{Provider: provider, Account: account}
+	return usageIdentity{Provider: provider}
 }
 
 func displayAuthProvider(value string) string {

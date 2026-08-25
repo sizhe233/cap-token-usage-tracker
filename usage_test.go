@@ -131,6 +131,9 @@ func TestSafeUsageSourceSanitizesURLAndCredentials(t *testing.T) {
 		{name: "known credential prefix", source: "gsk_secret01234567890123456789", provider: "groq", want: "https://api.groq.com/openai/v1"},
 		{name: "safe integration source", source: "cli", provider: "openai", authType: "oauth", want: "cli"},
 		{name: "unknown provider fallback", source: "secret", provider: "custom-provider", authType: "apikey", want: "custom-provider"},
+		{name: "short token-like source collapses", source: "ab:cd", provider: "codex", authType: "oauth", want: "https://api.openai.com/v1"},
+		{name: "email source collapses", source: "user@example.com", provider: "codex", authType: "oauth", want: "https://api.openai.com/v1"},
+		{name: "unknown source collapses", source: "arbitrary-account-label", provider: "custom-provider", authType: "oauth", want: "custom-provider"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

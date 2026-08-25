@@ -14,13 +14,13 @@ func TestIdentityFromRuntimeMetadataBuildsSafeProviderAccountLabel(t *testing.T)
 		usage    Dimensions
 		want     usageIdentity
 	}{
-		{name: "codex email", metadata: authRuntimeMetadata{Provider: "codex", Email: "user@example.com"}, want: usageIdentity{Provider: "Codex", Account: "user@example.com"}},
-		{name: "same account antigravity", metadata: authRuntimeMetadata{Provider: "antigravity", Email: "user@example.com"}, want: usageIdentity{Provider: "Antigravity", Account: "user@example.com"}},
-		{name: "xai becomes grok", metadata: authRuntimeMetadata{Provider: "xai", Email: "user@example.com"}, want: usageIdentity{Provider: "Grok", Account: "user@example.com"}},
-		{name: "oauth account fallback", metadata: authRuntimeMetadata{Provider: "codex", AccountType: "oauth", Account: "oauth-account"}, want: usageIdentity{Provider: "Codex", Account: "oauth-account"}},
-		{name: "safe label fallback", metadata: authRuntimeMetadata{Provider: "custom", Label: "team-account"}, want: usageIdentity{Provider: "custom", Account: "team-account"}},
-		{name: "api key account ignored", metadata: authRuntimeMetadata{Provider: "codex", AccountType: "api_key", Account: "sk-secret-1234567890"}, usage: Dimensions{Source: "cli"}, want: usageIdentity{Provider: "Codex", Account: "cli"}},
-		{name: "source fallback is sanitized", metadata: authRuntimeMetadata{Provider: "codex"}, usage: Dimensions{Source: "https://user:secret@example.com/v1/?api_key=secret"}, want: usageIdentity{Provider: "Codex", Account: "https://example.com/v1"}},
+		{name: "codex email ignored", metadata: authRuntimeMetadata{Provider: "codex", Email: "user@example.com"}, want: usageIdentity{Provider: "Codex", Account: ""}},
+		{name: "antigravity email ignored", metadata: authRuntimeMetadata{Provider: "antigravity", Email: "user@example.com"}, want: usageIdentity{Provider: "Antigravity", Account: ""}},
+		{name: "xai email ignored", metadata: authRuntimeMetadata{Provider: "xai", Email: "user@example.com"}, want: usageIdentity{Provider: "Grok", Account: ""}},
+		{name: "oauth account ignored", metadata: authRuntimeMetadata{Provider: "codex", AccountType: "oauth", Account: "oauth-account"}, want: usageIdentity{Provider: "Codex", Account: ""}},
+		{name: "label ignored", metadata: authRuntimeMetadata{Provider: "custom", Label: "team-account"}, want: usageIdentity{Provider: "custom", Account: ""}},
+		{name: "api key account ignored", metadata: authRuntimeMetadata{Provider: "codex", AccountType: "api_key", Account: "sk-secret-1234567890"}, want: usageIdentity{Provider: "Codex", Account: ""}},
+		{name: "source fallback ignored", metadata: authRuntimeMetadata{Provider: "codex"}, usage: Dimensions{Source: "https://user:secret@example.com/v1/?api_key=secret"}, want: usageIdentity{Provider: "Codex", Account: ""}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -38,11 +38,11 @@ func TestAuthIdentityResolverCachesSanitizedMetadataAndUsesCurrentSourceFallback
 		return authRuntimeMetadata{Provider: "codex", AccountType: "api_key", Account: "sk-secret-1234567890"}, nil
 	})
 	first, err := resolver.resolve("stable-auth-index", Dimensions{Source: "first"})
-	if err != nil || first != (usageIdentity{Provider: "Codex", Account: "first"}) {
+	if err != nil || first != (usageIdentity{Provider: "Codex"}) {
 		t.Fatalf("first resolve = %+v, %v", first, err)
 	}
 	second, err := resolver.resolve("stable-auth-index", Dimensions{Source: "second"})
-	if err != nil || second != (usageIdentity{Provider: "Codex", Account: "second"}) {
+	if err != nil || second != (usageIdentity{Provider: "Codex"}) {
 		t.Fatalf("cached resolve = %+v, %v", second, err)
 	}
 	if calls.Load() != 1 {
@@ -92,7 +92,7 @@ func TestAuthIdentityResolverCoalescesConcurrentLookups(t *testing.T) {
 		}
 	}
 	for identity := range results {
-		if identity != (usageIdentity{Provider: "Antigravity", Account: "user@example.com"}) {
+		if identity != (usageIdentity{Provider: "Antigravity"}) {
 			t.Fatalf("identity = %+v", identity)
 		}
 	}

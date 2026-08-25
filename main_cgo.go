@@ -79,7 +79,6 @@ func cliproxy_plugin_init(host *C.cliproxy_host_api, plugin *C.cliproxy_plugin_a
 		return 2
 	}
 	setHostAPI(host)
-	runtimeState.setAuthRuntimeLookup(hostRuntimeAuthLookup)
 	plugin.abi_version = C.uint32_t(pluginabi.ABIVersion)
 	plugin.call = C.cliproxy_plugin_call_fn(C.cliproxy_plugin_call_bridge)
 	plugin.free_buffer = C.cliproxy_plugin_free_fn(C.cliproxyPluginFree)
