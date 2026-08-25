@@ -214,7 +214,7 @@ func (f *modelsDevFetcher) fetch(ctx context.Context) (map[string]modelsDevProvi
 		return nil, fmt.Errorf("create models.dev request: %w", err)
 	}
 	request.Header.Set("Accept", "application/json")
-	request.Header.Set("User-Agent", "cap-token-usage-tracker/"+version)
+	request.Header.Set("User-Agent", "cap-token-usage-tracker-sizhe233/"+version)
 	response, err := f.client.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("fetch models.dev catalog: %w", err)

@@ -152,7 +152,7 @@ func (f *exchangeRateFetcher) fetch(ctx context.Context) (exchangeRateProviderRe
 		return exchangeRateProviderResponse{}, fmt.Errorf("create exchange-rate request: %w", err)
 	}
 	request.Header.Set("Accept", "application/json")
-	request.Header.Set("User-Agent", "cap-token-usage-tracker/"+version)
+	request.Header.Set("User-Agent", "cap-token-usage-tracker-sizhe233/"+version)
 	response, err := f.client.Do(request)
 	if err != nil {
 		return exchangeRateProviderResponse{}, fmt.Errorf("fetch exchange rate: %w", err)

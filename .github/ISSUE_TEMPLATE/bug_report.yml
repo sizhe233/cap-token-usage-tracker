@@ -14,7 +14,7 @@ body:
     id: plugin_version
     attributes:
       label: "插件版本 / Plugin version"
-      description: "请填写 cap-token-usage-tracker 的版本号 / Please provide the cap-token-usage-tracker version"
+      description: "请填写 cap-token-usage-tracker-sizhe233 的版本号 / Please provide the cap-token-usage-tracker-sizhe233 version"
       placeholder: "例如：v1.3.4-alpha.153 /  v1.3.4"
     validations:
       required: true

@@ -60,7 +60,7 @@ type Sensitive interface {
 
 func deriveDomainKey(secret, domain string) [32]byte {
 	mac := hmac.New(sha256.New, []byte(secret))
-	_, _ = mac.Write([]byte("cap-token-usage-tracker/" + domain + "/v1"))
+	_, _ = mac.Write([]byte("cap-token-usage-tracker-sizhe233/" + domain + "/v1"))
 	var result [32]byte
 	copy(result[:], mac.Sum(nil))
 	return result
@@ -79,7 +79,7 @@ func deriveCryptoContext(secret string) (cryptoContext, error) {
 		enabled:           true,
 		usesDefaultSecret: secret == defaultAPIKeySecret,
 	}
-	idInput := append([]byte("cap-token-usage-tracker/key-id/v1:"), ctx.indexKey[:]...)
+	idInput := append([]byte("cap-token-usage-tracker-sizhe233/key-id/v1:"), ctx.indexKey[:]...)
 	id := sha256.Sum256(idInput)
 	ctx.keyID = hex.EncodeToString(id[:16])
 	return ctx, nil

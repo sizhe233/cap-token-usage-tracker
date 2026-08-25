@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  PLUGIN_ID: cap-token-usage-tracker
+  PLUGIN_ID: cap-token-usage-tracker-sizhe233
 
 jobs:
   prepare:

@@ -4,8 +4,8 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 DIST_DIR="$ROOT_DIR/dist"
 VERSION=${VERSION:-v1.0.0}
-RELEASE_ARTIFACT="$DIST_DIR/cap-token-usage-tracker-${VERSION}-linux-arm64.so"
-INSTALL_ARTIFACT="$DIST_DIR/cap-token-usage-tracker.so"
+RELEASE_ARTIFACT="$DIST_DIR/cap-token-usage-tracker-sizhe233-${VERSION}-linux-arm64.so"
+INSTALL_ARTIFACT="$DIST_DIR/cap-token-usage-tracker-sizhe233.so"
 
 proxy_works() {
   curl --silent --show-error --fail --max-time 5 --proxy "$1" https://proxy.golang.org/ >/dev/null 2>&1

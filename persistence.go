@@ -1528,7 +1528,7 @@ func recoverInterruptedRestore(dataPath string) error {
 		if renameErr := os.Rename(rollbackPath, dataPath); renameErr != nil {
 			return fmt.Errorf("recover restore rollback database: %w", renameErr)
 		}
-		fmt.Fprintln(os.Stderr, "cap-token-usage-tracker: recovered database from interrupted restore rollback")
+		fmt.Fprintln(os.Stderr, "cap-token-usage-tracker-sizhe233: recovered database from interrupted restore rollback")
 		return nil
 	case err != nil:
 		return fmt.Errorf("stat live database during restore recovery: %w", err)

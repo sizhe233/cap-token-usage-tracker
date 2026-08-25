@@ -16,8 +16,8 @@ import (
 )
 
 func TestPluginIDFromResourceBase(t *testing.T) {
-	got, err := pluginIDFromResourceBase("/v0/resource/plugins/cap-token-usage-tracker")
-	if err != nil || got != "cap-token-usage-tracker" {
+	got, err := pluginIDFromResourceBase("/v0/resource/plugins/cap-token-usage-tracker-sizhe233")
+	if err != nil || got != "cap-token-usage-tracker-sizhe233" {
 		t.Fatalf("got %q, %v", got, err)
 	}
 	for _, invalid := range []string{"/wrong/id", "/v0/resource/plugins/a/b", "/v0/resource/plugins/bad id"} {

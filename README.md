@@ -1,7 +1,7 @@
 # CAP Token Usage Tracker
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![访问计数](https://count.getloli.com/get/@cap-token-usage-tracker?theme=gelbooru)](https://github.com/journey-ad/Moe-Counter)
+[![访问计数](https://count.getloli.com/get/@cap-token-usage-tracker-sizhe233?theme=gelbooru)](https://github.com/journey-ad/Moe-Counter)
 
 **[English](#english)** | [中文](#中文)
 
@@ -35,7 +35,7 @@ CAP Token Usage Tracker 是 CLIProxyAPI 的持久化 Token 用量统计插件。
 普通模式是 Management Center 菜单默认打开的页面：
 
 ```text
-/v0/resource/plugins/cap-token-usage-tracker/dashboard
+/v0/resource/plugins/cap-token-usage-tracker-sizhe233/dashboard
 ```
 
 普通模式可以查看当前项目已有的非敏感统计数据，包括概览、趋势、费用估算、维度统计和逐请求元数据。它保留筛选、时间范围、刷新、表格分页、排序和列设置等日常查看功能。
@@ -51,7 +51,7 @@ CAP Token Usage Tracker 是 CLIProxyAPI 的持久化 Token 用量统计插件。
 点击普通模式顶部的“完整模式”按钮后，页面才显示管理密钥输入框。管理密钥通过 CLIProxyAPI Management API 鉴权成功后，插件签发一个随机、短期、仅保存在内存中的完整模式会话令牌，并导航到独立页面：
 
 ```text
-/v0/resource/plugins/cap-token-usage-tracker/full-dashboard
+/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-dashboard
 ```
 
 完整模式与普通模式保持相同的主体布局和统计功能，并额外显示：
@@ -100,14 +100,14 @@ CAP Token Usage Tracker 是 CLIProxyAPI 的持久化 Token 用量统计插件。
 
 ### 安装与配置
 
-将目标平台的共享库放入 CLIProxyAPI 对应目录。文件名必须保持为 `cap-token-usage-tracker`，CLIProxyAPI 会根据共享库文件名派生 plugin ID。
+将目标平台的共享库放入 CLIProxyAPI 对应目录。文件名必须保持为 `cap-token-usage-tracker-sizhe233`，CLIProxyAPI 会根据共享库文件名派生 plugin ID。
 
 | 平台 | 安装路径 |
 |---|---|
-| Linux amd64 | `plugins/linux/amd64/cap-token-usage-tracker.so` |
-| Linux arm64 | `plugins/linux/arm64/cap-token-usage-tracker.so` |
-| Windows amd64 | `plugins/windows/amd64/cap-token-usage-tracker.dll` |
-| macOS arm64 | `plugins/darwin/arm64/cap-token-usage-tracker.dylib` |
+| Linux amd64 | `plugins/linux/amd64/cap-token-usage-tracker-sizhe233.so` |
+| Linux arm64 | `plugins/linux/arm64/cap-token-usage-tracker-sizhe233.so` |
+| Windows amd64 | `plugins/windows/amd64/cap-token-usage-tracker-sizhe233.dll` |
+| macOS arm64 | `plugins/darwin/arm64/cap-token-usage-tracker-sizhe233.dylib` |
 
 CLIProxyAPI 配置示例：
 
@@ -116,7 +116,7 @@ plugins:
   enabled: true
   dir: plugins
   configs:
-    cap-token-usage-tracker:
+    cap-token-usage-tracker-sizhe233:
       enabled: true
       priority: 0
       retention_days: 365
@@ -192,37 +192,37 @@ plugins:
 
 ### 页面与接口
 
-以下路径以 plugin ID `cap-token-usage-tracker` 为例。
+以下路径以 plugin ID `cap-token-usage-tracker-sizhe233` 为例。
 
 普通资源：
 
 | 方法 | 路径 | 用途 |
 |---|---|---|
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/dashboard` | 普通模式页面 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/stats` | 兼容客户端的完整聚合统计 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/stats/initial` | 首屏摘要、紧凑模型汇总和聚合趋势 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/stats/trends` | 下采样后的逐模型趋势，供首屏后异步加载 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/stats/groups` | 服务端排序和分页的详细维度统计 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/requests` | 分页逐请求明细 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/costs` | 基于逐请求记录计算的费用统计 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/exchange-rate` | 缓存的 USD/CNY 汇率 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/prices` | 读取当前价格簿，用于费用展示 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/preferences` | 读取或保存仪表盘偏好 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/dashboard` | 普通模式页面 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/stats` | 兼容客户端的完整聚合统计 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/stats/initial` | 首屏摘要、紧凑模型汇总和聚合趋势 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/stats/trends` | 下采样后的逐模型趋势，供首屏后异步加载 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/stats/groups` | 服务端排序和分页的详细维度统计 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/requests` | 分页逐请求明细 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/costs` | 基于逐请求记录计算的费用统计 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/exchange-rate` | 缓存的 USD/CNY 汇率 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/prices` | 读取当前价格簿，用于费用展示 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/preferences` | 读取或保存仪表盘偏好 |
 
 完整模式资源：
 
 | 方法 | 路径 | 用途 |
 |---|---|---|
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-dashboard` | 独立完整模式页面壳 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/data` | 校验会话并返回受保护数据 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/api-key-labels` | 通过 `X-API-Key-Label` JSON 请求头保存或删除 API Key 显示标签 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/session/revoke` | 撤销当前会话 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/prices` | 读取受保护价格配置 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/prices/save` | 分段保存价格配置 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/prices/sync` | 分段提交 models.dev 同步请求 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/backup` | 下载数据库备份 |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/restore` | 分段上传并恢复数据库 |
-| `POST` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/reset` | 校验会话后重置统计 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-dashboard` | 独立完整模式页面壳 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/data` | 校验会话并返回受保护数据 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/api-key-labels` | 通过 `X-API-Key-Label` JSON 请求头保存或删除 API Key 显示标签 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/session/revoke` | 撤销当前会话 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/prices` | 读取受保护价格配置 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/prices/save` | 分段保存价格配置 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/prices/sync` | 分段提交 models.dev 同步请求 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/backup` | 下载数据库备份 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/restore` | 分段上传并恢复数据库 |
+| `POST` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/reset` | 校验会话后重置统计 |
 
 除页面壳外，完整模式资源均要求：
 
@@ -234,13 +234,13 @@ X-Full-Mode-Session: <session-token>
 
 | 方法 | 路径 | 用途 |
 |---|---|---|
-| `POST` | `/v0/management/plugins/cap-token-usage-tracker/full-mode/session` | 签发完整模式会话 |
-| `GET` | `/v0/management/plugins/cap-token-usage-tracker/stats` | 读取聚合统计 |
-| `POST` | `/v0/management/plugins/cap-token-usage-tracker/reset` | 重置统计 |
-| `PUT` | `/v0/management/plugins/cap-token-usage-tracker/prices` | 保存模型价格 |
-| `POST` | `/v0/management/plugins/cap-token-usage-tracker/prices/sync` | 同步 models.dev 价格 |
-| `GET` | `/v0/management/plugins/cap-token-usage-tracker/backup` | 下载数据库备份 |
-| `POST` | `/v0/management/plugins/cap-token-usage-tracker/restore` | 恢复数据库 |
+| `POST` | `/v0/management/plugins/cap-token-usage-tracker-sizhe233/full-mode/session` | 签发完整模式会话 |
+| `GET` | `/v0/management/plugins/cap-token-usage-tracker-sizhe233/stats` | 读取聚合统计 |
+| `POST` | `/v0/management/plugins/cap-token-usage-tracker-sizhe233/reset` | 重置统计 |
+| `PUT` | `/v0/management/plugins/cap-token-usage-tracker-sizhe233/prices` | 保存模型价格 |
+| `POST` | `/v0/management/plugins/cap-token-usage-tracker-sizhe233/prices/sync` | 同步 models.dev 价格 |
+| `GET` | `/v0/management/plugins/cap-token-usage-tracker-sizhe233/backup` | 下载数据库备份 |
+| `POST` | `/v0/management/plugins/cap-token-usage-tracker-sizhe233/restore` | 恢复数据库 |
 
 统计、逐请求和费用接口支持 `range`，或 `start` 与 `end`，以及 `source` 等筛选参数。完整模式还支持重复的 `api_key_ref`，多个值按并集筛选；逐请求接口另支持 `offset`、`limit`、`model` 和 `result`。`/stats/groups` 另支持 `offset`、`limit`、`sort`、`direction`、`model` 和重复的 `exclude_model`；每页最多 500 条。
 
@@ -265,17 +265,17 @@ X-Confirm-Restore: replace
 # Linux amd64
 CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
   go build -buildmode=c-shared -trimpath -buildvcs=false \
-  -ldflags="-s -w -X main.version=1.0.0" -o cap-token-usage-tracker.so .
+  -ldflags="-s -w -X main.version=1.0.0" -o cap-token-usage-tracker-sizhe233.so .
 
 # Linux arm64
 CGO_ENABLED=1 GOOS=linux GOARCH=arm64 CC=aarch64-linux-gnu-gcc \
   go build -buildmode=c-shared -trimpath -buildvcs=false \
-  -ldflags="-s -w -X main.version=1.0.0" -o cap-token-usage-tracker.so .
+  -ldflags="-s -w -X main.version=1.0.0" -o cap-token-usage-tracker-sizhe233.so .
 
 # macOS arm64
 CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
   go build -buildmode=c-shared -trimpath -buildvcs=false \
-  -ldflags="-s -w -X main.version=1.0.0" -o cap-token-usage-tracker.dylib .
+  -ldflags="-s -w -X main.version=1.0.0" -o cap-token-usage-tracker-sizhe233.dylib .
 ```
 
 Windows PowerShell：
@@ -286,7 +286,7 @@ $env:GOARCH = "amd64"
 $env:CGO_ENABLED = "1"
 go build -buildmode=c-shared -trimpath -buildvcs=false `
   -ldflags="-s -w -X main.version=1.0.0" `
-  -o cap-token-usage-tracker.dll .
+  -o cap-token-usage-tracker-sizhe233.dll .
 ```
 
 `build_dll.ps1` 包含当前工作区固定的 MinGW 和路径设置，在其他机器使用前需要调整。仓库还提供 Linux ARM64 构建/验证脚本和 macOS 验证脚本。
@@ -341,7 +341,7 @@ The plugin does not store prompts, request bodies, or model response bodies. Whe
 Normal mode is the default Management Center page:
 
 ```text
-/v0/resource/plugins/cap-token-usage-tracker/dashboard
+/v0/resource/plugins/cap-token-usage-tracker-sizhe233/dashboard
 ```
 
 It displays the project's current non-sensitive statistics, including summaries, trends, cost estimates, grouped dimensions, and per-request metadata. Filters, date ranges, refresh, pagination, sorting, and column settings remain available.
@@ -353,7 +353,7 @@ Normal mode does not expose model-price configuration, models.dev synchronizatio
 The management-key dialog appears only after the user clicks Full Mode. After CLIProxyAPI Management API authentication succeeds, the plugin issues a random short-lived in-memory capability and navigates to:
 
 ```text
-/v0/resource/plugins/cap-token-usage-tracker/full-dashboard
+/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-dashboard
 ```
 
 Full mode keeps the same dashboard layout and statistics while adding:
@@ -394,14 +394,14 @@ Normal-mode statistics resources do not ask for the management key again, so any
 
 ### Installation and Configuration
 
-Place the shared library in the matching CLIProxyAPI plugin directory. Keep the base filename `cap-token-usage-tracker`, because CLIProxyAPI derives the plugin ID from it.
+Place the shared library in the matching CLIProxyAPI plugin directory. Keep the base filename `cap-token-usage-tracker-sizhe233`, because CLIProxyAPI derives the plugin ID from it.
 
 | Platform | Install path |
 |---|---|
-| Linux amd64 | `plugins/linux/amd64/cap-token-usage-tracker.so` |
-| Linux arm64 | `plugins/linux/arm64/cap-token-usage-tracker.so` |
-| Windows amd64 | `plugins/windows/amd64/cap-token-usage-tracker.dll` |
-| macOS arm64 | `plugins/darwin/arm64/cap-token-usage-tracker.dylib` |
+| Linux amd64 | `plugins/linux/amd64/cap-token-usage-tracker-sizhe233.so` |
+| Linux arm64 | `plugins/linux/arm64/cap-token-usage-tracker-sizhe233.so` |
+| Windows amd64 | `plugins/windows/amd64/cap-token-usage-tracker-sizhe233.dll` |
+| macOS arm64 | `plugins/darwin/arm64/cap-token-usage-tracker-sizhe233.dylib` |
 
 CLIProxyAPI configuration example:
 
@@ -410,7 +410,7 @@ plugins:
   enabled: true
   dir: plugins
   configs:
-    cap-token-usage-tracker:
+    cap-token-usage-tracker-sizhe233:
       enabled: true
       priority: 0
       retention_days: 365
@@ -470,37 +470,37 @@ Management-key-protected CLIProxyAPI Management API routes remain available for 
 
 ### Pages and Endpoints
 
-The following examples use plugin ID `cap-token-usage-tracker`.
+The following examples use plugin ID `cap-token-usage-tracker-sizhe233`.
 
 Normal resources:
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/dashboard` | Normal-mode page |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/stats` | Complete aggregates for compatible clients |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/stats/initial` | First-screen summary, compact model totals, and aggregate trend |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/stats/trends` | Downsampled per-model trends loaded after first paint |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/stats/groups` | Server-sorted and paginated detailed dimension statistics |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/requests` | Paginated per-request details |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/costs` | Per-request-derived cost statistics |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/exchange-rate` | Cached USD/CNY exchange rate |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/prices` | Current price book for cost display |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/preferences` | Read or persist dashboard preferences |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/dashboard` | Normal-mode page |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/stats` | Complete aggregates for compatible clients |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/stats/initial` | First-screen summary, compact model totals, and aggregate trend |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/stats/trends` | Downsampled per-model trends loaded after first paint |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/stats/groups` | Server-sorted and paginated detailed dimension statistics |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/requests` | Paginated per-request details |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/costs` | Per-request-derived cost statistics |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/exchange-rate` | Cached USD/CNY exchange rate |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/prices` | Current price book for cost display |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/preferences` | Read or persist dashboard preferences |
 
 Full-mode resources:
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-dashboard` | Separate full-mode page shell |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/data` | Validate the session and return protected data |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/api-key-labels` | Save or delete an API-key display label with an `X-API-Key-Label` JSON request header |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/session/revoke` | Revoke the active session |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/prices` | Read protected pricing configuration |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/prices/save` | Persist pricing through a staged payload |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/prices/sync` | Synchronize models.dev through a staged payload |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/backup` | Download a database backup |
-| `GET` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/restore` | Upload and restore a backup in stages |
-| `POST` | `/v0/resource/plugins/cap-token-usage-tracker/full-mode/reset` | Reset statistics after validating the session |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-dashboard` | Separate full-mode page shell |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/data` | Validate the session and return protected data |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/api-key-labels` | Save or delete an API-key display label with an `X-API-Key-Label` JSON request header |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/session/revoke` | Revoke the active session |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/prices` | Read protected pricing configuration |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/prices/save` | Persist pricing through a staged payload |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/prices/sync` | Synchronize models.dev through a staged payload |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/backup` | Download a database backup |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/restore` | Upload and restore a backup in stages |
+| `POST` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/reset` | Reset statistics after validating the session |
 
 All full-mode resources except the page shell require:
 
@@ -512,13 +512,13 @@ Management API routes:
 
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/v0/management/plugins/cap-token-usage-tracker/full-mode/session` | Issue a session after management authentication |
-| `GET` | `/v0/management/plugins/cap-token-usage-tracker/stats` | Read aggregate statistics |
-| `POST` | `/v0/management/plugins/cap-token-usage-tracker/reset` | Reset statistics |
-| `PUT` | `/v0/management/plugins/cap-token-usage-tracker/prices` | Persist model prices |
-| `POST` | `/v0/management/plugins/cap-token-usage-tracker/prices/sync` | Synchronize models.dev prices |
-| `GET` | `/v0/management/plugins/cap-token-usage-tracker/backup` | Download a database backup |
-| `POST` | `/v0/management/plugins/cap-token-usage-tracker/restore` | Restore the database |
+| `POST` | `/v0/management/plugins/cap-token-usage-tracker-sizhe233/full-mode/session` | Issue a session after management authentication |
+| `GET` | `/v0/management/plugins/cap-token-usage-tracker-sizhe233/stats` | Read aggregate statistics |
+| `POST` | `/v0/management/plugins/cap-token-usage-tracker-sizhe233/reset` | Reset statistics |
+| `PUT` | `/v0/management/plugins/cap-token-usage-tracker-sizhe233/prices` | Persist model prices |
+| `POST` | `/v0/management/plugins/cap-token-usage-tracker-sizhe233/prices/sync` | Synchronize models.dev prices |
+| `GET` | `/v0/management/plugins/cap-token-usage-tracker-sizhe233/backup` | Download a database backup |
+| `POST` | `/v0/management/plugins/cap-token-usage-tracker-sizhe233/restore` | Restore the database |
 
 Statistics, request, and cost resources accept `range`, or `start` and `end`, plus filters such as `source`. Full mode also accepts repeated `api_key_ref` values and applies their union. The request resource additionally accepts `offset`, `limit`, `model`, and `result`. `/stats/groups` additionally accepts `offset`, `limit`, `sort`, `direction`, `model`, and repeated `exclude_model`; pages are limited to 500 rows.
 
@@ -543,17 +543,17 @@ Go 1.26+ and `CGO_ENABLED=1` are required. Windows amd64 requires MinGW-w64; Lin
 # Linux amd64
 CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
   go build -buildmode=c-shared -trimpath -buildvcs=false \
-  -ldflags="-s -w -X main.version=1.0.0" -o cap-token-usage-tracker.so .
+  -ldflags="-s -w -X main.version=1.0.0" -o cap-token-usage-tracker-sizhe233.so .
 
 # Linux arm64
 CGO_ENABLED=1 GOOS=linux GOARCH=arm64 CC=aarch64-linux-gnu-gcc \
   go build -buildmode=c-shared -trimpath -buildvcs=false \
-  -ldflags="-s -w -X main.version=1.0.0" -o cap-token-usage-tracker.so .
+  -ldflags="-s -w -X main.version=1.0.0" -o cap-token-usage-tracker-sizhe233.so .
 
 # macOS arm64
 CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
   go build -buildmode=c-shared -trimpath -buildvcs=false \
-  -ldflags="-s -w -X main.version=1.0.0" -o cap-token-usage-tracker.dylib .
+  -ldflags="-s -w -X main.version=1.0.0" -o cap-token-usage-tracker-sizhe233.dylib .
 ```
 
 Windows PowerShell:
@@ -564,7 +564,7 @@ $env:GOARCH = "amd64"
 $env:CGO_ENABLED = "1"
 go build -buildmode=c-shared -trimpath -buildvcs=false `
   -ldflags="-s -w -X main.version=1.0.0" `
-  -o cap-token-usage-tracker.dll .
+  -o cap-token-usage-tracker-sizhe233.dll .
 ```
 
 `build_dll.ps1` contains workspace-specific MinGW and directory paths and must be adjusted for other machines. The repository also includes Linux ARM64 build/verification scripts and a macOS verification script.

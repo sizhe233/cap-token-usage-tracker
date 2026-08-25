@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-ARTIFACT=${1:-"$ROOT_DIR/cap-token-usage-tracker.dylib"}
+ARTIFACT=${1:-"$ROOT_DIR/cap-token-usage-tracker-sizhe233.dylib"}
 
 for command in go file nm clang; do
   command -v "$command" >/dev/null || {
@@ -41,7 +41,7 @@ TEST_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/cap-token-usage-darwin.XXXXXX")
 trap 'rm -rf -- "$TEST_ROOT"' EXIT
 HOST_ARCH=$(go env GOHOSTARCH)
 INSTALL_DIR="$TEST_ROOT/CLIProxyAPI/plugins/darwin/$HOST_ARCH"
-INSTALLED_PLUGIN="$INSTALL_DIR/cap-token-usage-tracker.dylib"
+INSTALLED_PLUGIN="$INSTALL_DIR/cap-token-usage-tracker-sizhe233.dylib"
 EXPECTED_DATABASE="$TEST_ROOT/CLIProxyAPI/data/token-usage-tracker.db"
 SMOKE_BINARY="$TEST_ROOT/abi-smoke-darwin"
 

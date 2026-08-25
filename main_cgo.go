@@ -68,7 +68,7 @@ func init() {
 func cliproxy_plugin_init(host *C.cliproxy_host_api, plugin *C.cliproxy_plugin_api) (result C.int) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			fmt.Fprintln(os.Stderr, "cap-token-usage-tracker: plugin initialization panic")
+			fmt.Fprintln(os.Stderr, "cap-token-usage-tracker-sizhe233: plugin initialization panic")
 			result = 3
 		}
 	}()
@@ -132,7 +132,7 @@ func cliproxyPluginCall(method *C.char, request *C.uint8_t, requestLen C.size_t,
 func cliproxyPluginFree(ptr unsafe.Pointer, _ C.size_t) {
 	defer func() {
 		if recover() != nil {
-			fmt.Fprintln(os.Stderr, "cap-token-usage-tracker: buffer release panic")
+			fmt.Fprintln(os.Stderr, "cap-token-usage-tracker-sizhe233: buffer release panic")
 		}
 	}()
 	if ptr != nil {
@@ -144,12 +144,12 @@ func cliproxyPluginFree(ptr unsafe.Pointer, _ C.size_t) {
 func cliproxyPluginShutdown() {
 	defer func() {
 		if recover() != nil {
-			fmt.Fprintln(os.Stderr, "cap-token-usage-tracker: shutdown panic")
+			fmt.Fprintln(os.Stderr, "cap-token-usage-tracker-sizhe233: shutdown panic")
 		}
 	}()
 	clearHostAPI()
 	if err := runtimeState.shutdown(); err != nil {
-		fmt.Fprintln(os.Stderr, "cap-token-usage-tracker: shutdown persistence error:", err)
+		fmt.Fprintln(os.Stderr, "cap-token-usage-tracker-sizhe233: shutdown persistence error:", err)
 	}
 }
 

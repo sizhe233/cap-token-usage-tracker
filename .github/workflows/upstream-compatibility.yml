@@ -64,6 +64,6 @@ jobs:
         run: |
           set -euo pipefail
           CGO_ENABLED=1 go build -buildmode=c-shared -trimpath -buildvcs=false \
-            -o cap-token-usage-tracker.so .
+            -o cap-token-usage-tracker-sizhe233.so .
           cc -O2 -Wall -Wextra -o abi-smoke scripts/abi-smoke.c -ldl
-          ./abi-smoke ./cap-token-usage-tracker.so
+          ./abi-smoke ./cap-token-usage-tracker-sizhe233.so

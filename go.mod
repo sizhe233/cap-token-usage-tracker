@@ -1,4 +1,4 @@
-module github.com/AITNR/cap-token-usage-tracker
+module github.com/sizhe233/cap-token-usage-tracker
 
 go 1.26.0
 

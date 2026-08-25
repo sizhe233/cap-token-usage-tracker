@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "plugins": [
+    {
+      "id": "cap-token-usage-tracker-sizhe233",
+      "name": "CAP Token Usage Tracker (audited)",
+      "description": "Audited and version-pinned token usage tracker with API-key tracking disabled by default.",
+      "author": "AITNR / sizhe233",
+      "version": "2.0.3-audit.1",
+      "repository": "https://github.com/sizhe233/cap-token-usage-tracker",
+      "homepage": "https://github.com/sizhe233/cap-token-usage-tracker",
+      "license": "MIT",
+      "tags": [
+        "management",
+        "usage",
+        "statistics",
+        "dashboard",
+        "audited"
+      ]
+    }
+  ]
+}

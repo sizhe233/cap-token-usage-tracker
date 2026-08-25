@@ -8,7 +8,7 @@ import (
 
 func TestResolveDefaultDataPathFromPluginModule(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "CLIProxyAPI")
-	modulePath := filepath.Join(root, "plugins", "darwin", "arm64", "cap-token-usage-tracker.dylib")
+	modulePath := filepath.Join(root, "plugins", "darwin", "arm64", "cap-token-usage-tracker-sizhe233.dylib")
 
 	got := resolveDefaultDataPath(modulePath, "", "")
 	want := filepath.Join(root, "data", defaultDataFileName)
@@ -19,7 +19,7 @@ func TestResolveDefaultDataPathFromPluginModule(t *testing.T) {
 
 func TestResolveDefaultDataPathFromRelativePluginModule(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "CLIProxyAPI")
-	modulePath := filepath.Join("plugins", "linux", "amd64", "cap-token-usage-tracker.so")
+	modulePath := filepath.Join("plugins", "linux", "amd64", "cap-token-usage-tracker-sizhe233.so")
 
 	got := resolveDefaultDataPath(modulePath, "", root)
 	want := filepath.Join(root, "data", defaultDataFileName)
@@ -57,7 +57,7 @@ func TestResolveDefaultDataPathFromWorkingDirectory(t *testing.T) {
 func TestResolveDefaultDataPathFallsBackForUnknownLayout(t *testing.T) {
 	base := t.TempDir()
 	got := resolveDefaultDataPath(
-		filepath.Join(base, "cache", "cap-token-usage-tracker.dylib"),
+		filepath.Join(base, "cache", "cap-token-usage-tracker-sizhe233.dylib"),
 		filepath.Join(base, "bin", "CLIProxyAPI"),
 		base,
 	)
@@ -68,7 +68,7 @@ func TestResolveDefaultDataPathFallsBackForUnknownLayout(t *testing.T) {
 
 func TestResolveDefaultDataPathRejectsFilesystemRoot(t *testing.T) {
 	root := filepath.VolumeName(t.TempDir()) + string(filepath.Separator)
-	modulePath := filepath.Join(root, "plugins", "darwin", "arm64", "cap-token-usage-tracker.dylib")
+	modulePath := filepath.Join(root, "plugins", "darwin", "arm64", "cap-token-usage-tracker-sizhe233.dylib")
 
 	got := resolveDefaultDataPath(modulePath, "", "")
 	if got != legacyDefaultDataPath {
