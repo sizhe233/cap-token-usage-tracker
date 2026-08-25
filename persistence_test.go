@@ -124,21 +124,21 @@ func TestSourceFilterAppliesToStatsRequestsAndCosts(t *testing.T) {
 	defer store.Close()
 	now := nowUTC().Add(-time.Minute)
 	for _, usage := range []normalizedUsage{
-		{Dimensions: Dimensions{Model: "alpha", Source: "Codex-user@example.com"}, RequestedAt: now, Counters: Counters{Requests: 1, InputTokens: 2, TotalTokens: 2}},
-		{Dimensions: Dimensions{Model: "beta", Source: "Antigravity-user@example.com"}, RequestedAt: now.Add(time.Second), Counters: Counters{Requests: 1, InputTokens: 4, TotalTokens: 4}},
+		{Dimensions: Dimensions{Model: "alpha", Source: "cli"}, RequestedAt: now, Counters: Counters{Requests: 1, InputTokens: 2, TotalTokens: 2}},
+		{Dimensions: Dimensions{Model: "beta", Source: "web"}, RequestedAt: now.Add(time.Second), Counters: Counters{Requests: 1, InputTokens: 4, TotalTokens: 4}},
 	} {
 		if err := store.Record(usage); err != nil {
 			t.Fatal(err)
 		}
 	}
 	queryRange := usageRange{Name: "24h", Start: now.Add(-time.Hour)}
-	filter := newUsageFilter("Codex-user@example.com", "")
+	filter := newUsageFilter("cli", "")
 	stats, err := store.queryStatsByFilter(queryRange, filter)
 	if err != nil || stats.Summary.Requests != 1 || stats.Summary.TotalTokens != 2 || len(stats.Sources) != 2 {
 		t.Fatalf("filtered stats = %+v, %v", stats, err)
 	}
 	page, err := store.queryRequestPageByFilter(queryRange, 0, 100, "", filter, "")
-	if err != nil || page.Total != 1 || len(page.Items) != 1 || page.Items[0].Source != "Codex-user@example.com" {
+	if err != nil || page.Total != 1 || len(page.Items) != 1 || page.Items[0].Source != "cli" {
 		t.Fatalf("filtered request page = %+v, %v", page, err)
 	}
 	costs, err := store.queryCostsByFilter(queryRange, filter)
@@ -559,7 +559,7 @@ func TestStoreDoesNotDropRecordsAfterFlushFailure(t *testing.T) {
 	}
 	_ = store.Close()
 
-	key := aggregateKey{Hour: now.Truncate(time.Minute).Unix(), Dimensions: usage.Dimensions}
+	key := aggregateKey{Hour: now.Truncate(time.Minute).Unix(), Dimensions: sanitizeDimensionsSource(usage.Dimensions)}
 	if got := actor.data[key].Requests; got != 2 {
 		t.Fatalf("accepted requests = %d, want 2", got)
 	}
@@ -992,7 +992,7 @@ func TestSchemaEightUsageSourcesMigrateAuthenticationIdentity(t *testing.T) {
 	for _, group := range stats.Groups {
 		groups[group.Source] = group.Counters
 	}
-	if len(groups) != 2 || groups["牛"].Requests != 1 || groups["Antigravity-dangngocbich07796@gmail.com"].Requests != 5 {
+	if len(groups) != 2 || groups["openai-compatible-牛"].Requests != 1 || groups["antigravity"].Requests != 5 {
 		t.Fatalf("migrated groups = %+v", stats.Groups)
 	}
 	page, err := store.QueryRequests("retention", 0, 100, "")
@@ -1003,7 +1003,7 @@ func TestSchemaEightUsageSourcesMigrateAuthenticationIdentity(t *testing.T) {
 	for _, item := range page.Items {
 		requestSources[item.Source]++
 	}
-	if len(page.Items) != len(entries) || requestSources["牛"] != 1 || requestSources["Antigravity-dangngocbich07796@gmail.com"] != 2 {
+	if len(page.Items) != len(entries) || requestSources["openai-compatible-牛"] != 1 || requestSources["antigravity"] != 2 {
 		t.Fatalf("migrated requests = %+v", page.Items)
 	}
 	if err := store.Close(); err != nil {

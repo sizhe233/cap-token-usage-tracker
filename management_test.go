@@ -521,14 +521,14 @@ func TestManagementIgnoresLegacyAuthenticationIdentityParameters(t *testing.T) {
 	}}
 	defer runtime.shutdown()
 	for _, usage := range []normalizedUsage{
-		{Dimensions: Dimensions{Model: "alpha", Source: "Codex-user@example.com"}, RequestedAt: nowUTC(), Counters: Counters{Requests: 1, TotalTokens: 3}},
-		{Dimensions: Dimensions{Model: "beta", Source: "Antigravity-user@example.com"}, RequestedAt: nowUTC(), Counters: Counters{Requests: 1, TotalTokens: 5}},
+		{Dimensions: Dimensions{Model: "alpha", Source: "cli"}, RequestedAt: nowUTC(), Counters: Counters{Requests: 1, TotalTokens: 3}},
+		{Dimensions: Dimensions{Model: "beta", Source: "web"}, RequestedAt: nowUTC(), Counters: Counters{Requests: 1, TotalTokens: 5}},
 	} {
 		if err := store.Record(usage); err != nil {
 			t.Fatal(err)
 		}
 	}
-	query := url.Values{"range": []string{"24h"}, "source": []string{"Codex-user@example.com"}, "auth_provider": []string{"ignored"}, "auth_account": []string{"ignored"}}
+	query := url.Values{"range": []string{"24h"}, "source": []string{"cli"}, "auth_provider": []string{"ignored"}, "auth_account": []string{"ignored"}}
 	for _, path := range []string{runtime.routes.resourceStatsPath, runtime.routes.resourceRequestsPath, runtime.routes.resourceCostsPath} {
 		if path == runtime.routes.resourceRequestsPath {
 			query.Set("offset", "0")
