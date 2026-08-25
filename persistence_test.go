@@ -87,10 +87,10 @@ func TestExactCustomStatsUseRequestBoundariesAndSourceFilter(t *testing.T) {
 	start := time.Date(2026, 8, 8, 10, 30, 25, 0, time.UTC)
 	end := time.Date(2026, 8, 8, 13, 45, 10, 0, time.UTC)
 	for _, usage := range []normalizedUsage{
-		{Dimensions: Dimensions{Model: "before", Source: "codex"}, RequestedAt: start.Add(-time.Nanosecond), Counters: Counters{Requests: 1, TotalTokens: 1}},
-		{Dimensions: Dimensions{Model: "start", Source: "codex"}, RequestedAt: start, Counters: Counters{Requests: 1, TotalTokens: 2}},
-		{Dimensions: Dimensions{Model: "inside", Source: "grok"}, RequestedAt: end.Add(-time.Nanosecond), Counters: Counters{Requests: 1, TotalTokens: 4}},
-		{Dimensions: Dimensions{Model: "end", Source: "codex"}, RequestedAt: end, Counters: Counters{Requests: 1, TotalTokens: 8}},
+		{Dimensions: Dimensions{Model: "before", Source: "cli"}, RequestedAt: start.Add(-time.Nanosecond), Counters: Counters{Requests: 1, TotalTokens: 1}},
+		{Dimensions: Dimensions{Model: "start", Source: "cli"}, RequestedAt: start, Counters: Counters{Requests: 1, TotalTokens: 2}},
+		{Dimensions: Dimensions{Model: "inside", Source: "web"}, RequestedAt: end.Add(-time.Nanosecond), Counters: Counters{Requests: 1, TotalTokens: 4}},
+		{Dimensions: Dimensions{Model: "end", Source: "cli"}, RequestedAt: end, Counters: Counters{Requests: 1, TotalTokens: 8}},
 	} {
 		if err := store.Record(usage); err != nil {
 			t.Fatal(err)
@@ -105,11 +105,11 @@ func TestExactCustomStatsUseRequestBoundariesAndSourceFilter(t *testing.T) {
 	if stats.Summary.Requests != 2 || stats.Summary.TotalTokens != 6 || len(stats.Series) != 2 {
 		t.Fatalf("exact custom stats = %+v", stats)
 	}
-	filtered, err := store.queryStatsBySource(queryRange, "codex")
+	filtered, err := store.queryStatsBySource(queryRange, "cli")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if filtered.Summary.Requests != 1 || filtered.Summary.TotalTokens != 2 || len(filtered.Sources) != 2 || filtered.Sources[0] != "codex" || filtered.Sources[1] != "grok" {
+	if filtered.Summary.Requests != 1 || filtered.Summary.TotalTokens != 2 || len(filtered.Sources) != 2 || filtered.Sources[0] != "cli" || filtered.Sources[1] != "web" {
 		t.Fatalf("source-filtered exact stats = %+v", filtered)
 	}
 }
@@ -992,7 +992,7 @@ func TestSchemaEightUsageSourcesMigrateAuthenticationIdentity(t *testing.T) {
 	for _, group := range stats.Groups {
 		groups[group.Source] = group.Counters
 	}
-	if len(groups) != 2 || groups["openai-compatible-牛"].Requests != 1 || groups["antigravity"].Requests != 5 {
+	if len(groups) != 2 || groups["牛"].Requests != 1 || groups["antigravity"].Requests != 5 {
 		t.Fatalf("migrated groups = %+v", stats.Groups)
 	}
 	page, err := store.QueryRequests("retention", 0, 100, "")
@@ -1003,7 +1003,7 @@ func TestSchemaEightUsageSourcesMigrateAuthenticationIdentity(t *testing.T) {
 	for _, item := range page.Items {
 		requestSources[item.Source]++
 	}
-	if len(page.Items) != len(entries) || requestSources["openai-compatible-牛"] != 1 || requestSources["antigravity"] != 2 {
+	if len(page.Items) != len(entries) || requestSources["牛"] != 1 || requestSources["antigravity"] != 2 {
 		t.Fatalf("migrated requests = %+v", page.Items)
 	}
 	if err := store.Close(); err != nil {
