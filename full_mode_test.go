@@ -112,6 +112,114 @@ func TestFullModeSessionProtectsFullModeResources(t *testing.T) {
 	}
 }
 
+func TestResourceDataRoutesRequireAuthenticatedSession(t *testing.T) {
+	config := testConfig(t)
+	store, err := openStore(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime := &pluginRuntime{store: store, config: config}
+	defer runtime.shutdown()
+	registration, err := json.Marshal(pluginapi.ManagementRegistrationRequest{ResourceBasePath: "/v0/resource/plugins/test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.registerManagement(registration); err != nil {
+		t.Fatal(err)
+	}
+
+	call := func(method, path, session string) pluginapi.ManagementResponse {
+		t.Helper()
+		headers := http.Header{}
+		if session != "" {
+			headers.Set("X-Full-Mode-Session", session)
+		}
+		request, err := json.Marshal(pluginapi.ManagementRequest{Method: method, Path: path, Headers: headers})
+		if err != nil {
+			t.Fatal(err)
+		}
+		response, err := runtime.handleManagement(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return response
+	}
+
+	for _, path := range []string{runtime.routes.dashboardPath, runtime.routes.fullDashboardPath} {
+		response := call(http.MethodGet, path, "")
+		if response.StatusCode != http.StatusOK || len(response.Body) == 0 {
+			t.Fatalf("public shell %s response = %+v", path, response)
+		}
+	}
+
+	paths := []string{
+		runtime.routes.resourceStatsPath,
+		runtime.routes.resourceStatsInitialPath,
+		runtime.routes.resourceStatsTrendPath,
+		runtime.routes.resourceStatsGroupsPath,
+		runtime.routes.resourceRequestsPath,
+		runtime.routes.resourceCostsPath,
+		runtime.routes.resourceExchangeRatePath,
+		runtime.routes.resourcePricesPath,
+		runtime.routes.resourcePreferencesPath,
+	}
+	for _, path := range paths {
+		if response := call(http.MethodGet, path, ""); response.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("unauthenticated resource %s status = %d body=%s", path, response.StatusCode, response.Body)
+		}
+	}
+
+	session, err := runtime.createFullModeSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range paths {
+		if path == runtime.routes.resourceExchangeRatePath {
+			continue
+		}
+		if response := call(http.MethodGet, path, session); response.StatusCode == http.StatusUnauthorized {
+			t.Fatalf("valid session was rejected by %s", path)
+		}
+	}
+
+	runtime.revokeFullModeSession(session)
+	for _, path := range paths {
+		if response := call(http.MethodGet, path, session); response.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("revoked session accepted by %s", path)
+		}
+	}
+
+	expiredSession, err := runtime.createFullModeSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, err := base64.RawURLEncoding.DecodeString(expiredSession)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash := sha256.Sum256(token)
+	runtime.fullModeMu.Lock()
+	runtime.fullModeSessions[hash] = fullModeSession{expiresAt: nowUTC().Add(-time.Second)}
+	runtime.fullModeMu.Unlock()
+	for _, path := range paths {
+		if response := call(http.MethodGet, path, expiredSession); response.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("expired session accepted by %s", path)
+		}
+	}
+
+	for _, route := range []struct {
+		method string
+		path   string
+	}{
+		{http.MethodGet, runtime.routes.statsPath},
+		{http.MethodGet, runtime.routes.backupPath},
+	} {
+		if response := call(route.method, route.path, ""); response.StatusCode == http.StatusUnauthorized {
+			t.Fatalf("management route %s incorrectly requires a plugin session", route.path)
+		}
+	}
+}
+
 func TestFullModeAPIKeyTrackingTracksSuccessfulReconfigure(t *testing.T) {
 	config := testConfig(t)
 	runtime := &pluginRuntime{}
