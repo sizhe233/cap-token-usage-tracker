@@ -216,7 +216,7 @@ func TestAPIKeyTrackingRedactionRevealFilteringAndBackup(t *testing.T) {
 	}
 
 	data := call(runtime.routes.fullModeDataPath, nil, session)
-	if data.StatusCode != http.StatusOK || !bytes.Contains(data.Body, []byte(`"api_key_tracking_enabled":true`)) || !bytes.Contains(data.Body, []byte(`"api_key_uses_default_secret":true`)) {
+	if data.StatusCode != http.StatusOK || !bytes.Contains(data.Body, []byte(`"api_key_tracking_enabled":true`)) || !bytes.Contains(data.Body, []byte(`"api_key_uses_default_secret":false`)) {
 		t.Fatalf("full-mode data = %s", data.Body)
 	}
 
