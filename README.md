@@ -222,7 +222,7 @@ plugins:
 | `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/prices/sync` | 分段提交 models.dev 同步请求 |
 | `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/backup` | 下载数据库备份 |
 | `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/restore` | 分段上传并恢复数据库 |
-| `POST` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/reset` | 校验会话后重置统计 |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/reset` | 校验会话和 `X-Confirm-Reset: reset` 后重置统计 |
 
 除 `/dashboard` 和 `/full-dashboard` 两个静态页面壳外，上述全部资源数据接口均要求：
 
@@ -500,7 +500,7 @@ Full-mode resources:
 | `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/prices/sync` | Synchronize models.dev through a staged payload |
 | `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/backup` | Download a database backup |
 | `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/restore` | Upload and restore a backup in stages |
-| `POST` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/reset` | Reset statistics after validating the session |
+| `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/reset` | Reset statistics after validating the session and `X-Confirm-Reset: reset` |
 
 Every resource-data route listed above requires the following header; only `/dashboard` and `/full-dashboard` are public static shells:
 

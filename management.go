@@ -270,13 +270,16 @@ func (r *pluginRuntime) dispatchManagement(request pluginapi.ManagementRequest, 
 		}
 		return r.fullModeRestoreResponse(request)
 	case routes.fullModeResetPath:
-		if !strings.EqualFold(request.Method, http.MethodPost) {
-			return methodNotAllowed(http.MethodPost), nil
+		if !strings.EqualFold(request.Method, http.MethodGet) {
+			return methodNotAllowed(http.MethodGet), nil
 		}
 		if !r.validFullModeSession(fullModeSessionFromRequest(request)) {
 			return jsonResponse(http.StatusUnauthorized, map[string]string{"error": "full-mode session is missing or expired"}), nil
 		}
-		return r.resetResponse(request)
+		if request.Headers.Get("X-Confirm-Reset") != "reset" {
+			return jsonResponse(http.StatusBadRequest, map[string]any{"error": "X-Confirm-Reset must be reset"}), nil
+		}
+		return r.resetStore()
 	case routes.statsPath, routes.resourceStatsPath:
 		if !strings.EqualFold(request.Method, http.MethodGet) {
 			return methodNotAllowed(http.MethodGet), nil
@@ -947,6 +950,10 @@ func (r *pluginRuntime) resetResponse(request pluginapi.ManagementRequest) (plug
 	if err := json.Unmarshal(request.Body, &confirmation); err != nil || confirmation.Confirm != "reset" {
 		return jsonResponse(http.StatusBadRequest, map[string]any{"error": `body must be {"confirm":"reset"}`}), nil
 	}
+	return r.resetStore()
+}
+
+func (r *pluginRuntime) resetStore() (pluginapi.ManagementResponse, error) {
 	r.lifecycleMu.Lock()
 	defer r.lifecycleMu.Unlock()
 	r.mu.Lock()

@@ -22,6 +22,8 @@ const (
 	fullModeUploadMaxChunks = 16000
 )
 
+const maxFullModeUploadsPerSession = 2
+
 type fullModeSession struct {
 	expiresAt time.Time
 }
@@ -130,7 +132,9 @@ func (r *pluginRuntime) fullModeStagedPayloadResponse(request pluginapi.Manageme
 	switch request.Query.Get("stage") {
 	case "begin":
 		chunkCount, err := strconv.Atoi(request.Query.Get("chunks"))
-		if err != nil || chunkCount < 1 || chunkCount > fullModeUploadMaxChunks {
+		maxEncodedBytes := base64.RawURLEncoding.EncodedLen(maxPayloadBytes)
+		maxChunks := (maxEncodedBytes + fullModeUploadChunkSize - 1) / fullModeUploadChunkSize
+		if err != nil || chunkCount < 1 || chunkCount > maxChunks || chunkCount > fullModeUploadMaxChunks {
 			return jsonResponse(http.StatusBadRequest, map[string]string{"error": "invalid full-mode upload chunk count"}), nil
 		}
 		var idBytes [16]byte
@@ -143,6 +147,16 @@ func (r *pluginRuntime) fullModeStagedPayloadResponse(request pluginapi.Manageme
 			r.fullModeUploads = make(map[string]fullModeUpload)
 		}
 		r.purgeExpiredFullModeUploads(now)
+		activeUploads := 0
+		for _, upload := range r.fullModeUploads {
+			if subtle.ConstantTimeCompare(upload.sessionHash[:], sessionHash[:]) == 1 {
+				activeUploads++
+			}
+		}
+		if activeUploads >= maxFullModeUploadsPerSession {
+			r.fullModeMu.Unlock()
+			return jsonResponse(http.StatusTooManyRequests, map[string]string{"error": "too many active full-mode uploads"}), nil
+		}
 		r.fullModeUploads[id] = fullModeUpload{
 			sessionHash: sessionHash,
 			expiresAt:   now.Add(fullModeUploadTTL),

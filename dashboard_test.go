@@ -793,8 +793,8 @@ func TestFullModeUsesSeparateProtectedDashboard(t *testing.T) {
 	if !strings.Contains(dashboardHTML, `function startDashboard(){if(!fullModeSession){openFullModeDialog();return;}`) {
 		t.Fatal("ordinary dashboard must authenticate before loading resource data")
 	}
-	if !strings.Contains(dashboardHTML, `'X-Full-Mode-Session':fullModeSession`) {
-		t.Fatal("ordinary dashboard must attach the short-lived session to data requests")
+	if !strings.Contains(dashboardHTML, `'X-Full-Mode-Session':fullModeSession`) || !strings.Contains(dashboardHTML, `if(response.status===401&&fullModeSession){expireFullModeSession();}`) || !strings.Contains(dashboardHTML, `function expireFullModeSession(){fullModeSession='';`) {
+		t.Fatal("ordinary dashboard must attach the session and re-authenticate after expiry")
 	}
 	for _, required := range []string{`var fullModePage=true`, `button.exitFullMode`, `history.replaceState(null,'',window.location.pathname+window.location.search)`} {
 		if !strings.Contains(fullDashboardHTML, required) {
@@ -813,8 +813,8 @@ func TestFullModeUsesSeparateProtectedDashboard(t *testing.T) {
 			t.Fatalf("full dashboard must provide pricing UI %q", required)
 		}
 	}
-	if !strings.Contains(fullDashboardHTML, `var resetURL=resourceBase+'/full-mode/reset';`) || !strings.Contains(fullDashboardHTML, `async function resetStats(){if(!fullModeEnabled||!fullModeSession){text('error',t('fullMode.keyRequired'));return;}`) {
-		t.Fatal("full dashboard reset must use the session-protected resource route")
+	if !strings.Contains(fullDashboardHTML, `var resetURL=resourceBase+'/full-mode/reset';`) || !strings.Contains(fullDashboardHTML, `async function resetStats(){if(!fullModeEnabled||!fullModeSession){text('error',t('fullMode.keyRequired'));return;}`) || !strings.Contains(fullDashboardHTML, `method:'GET',headers:{'X-Confirm-Reset':'reset'}`) {
+		t.Fatal("full dashboard reset must use the GET-only session-protected resource contract")
 	}
 	for _, forbidden := range []string{`askBackupManagementKey`, `managementBase+'/backup'`, `managementBase+'/restore'`, `Authorization':'Bearer '+managementKey,'Content-Type':'application/octet-stream'`, `function askManagementKey()`, `id="resetDialog"`, `resetKeyInput`, `Authorization':'Bearer '+managementKey`} {
 		if strings.Contains(fullDashboardHTML, forbidden) {

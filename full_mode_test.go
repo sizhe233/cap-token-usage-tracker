@@ -396,7 +396,7 @@ func TestFullModeBackupAndRestoreRequireSession(t *testing.T) {
 	}
 }
 
-func TestFullModeResetRequiresSession(t *testing.T) {
+func TestFullModeResetUsesGETResourceContract(t *testing.T) {
 	config := testConfig(t)
 	store, err := openStore(config)
 	if err != nil {
@@ -413,36 +413,31 @@ func TestFullModeResetRequiresSession(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	body := []byte(`{"confirm":"reset"}`)
-	headers := http.Header{"Content-Type": []string{"application/json"}}
-
-	unauthorized, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodPost, Path: runtime.routes.fullModeResetPath, Headers: headers.Clone(), Body: body})
+	unauthorized, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.fullModeResetPath, Headers: http.Header{"X-Confirm-Reset": []string{"reset"}}})
 	response, err := runtime.handleManagement(unauthorized)
 	if err != nil || response.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("missing session reset response: %+v, %v", response, err)
-	}
-
-	badSessionHeaders := headers.Clone()
-	badSessionHeaders.Set("X-Full-Mode-Session", "bogus-session-token")
-	badSessionRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodPost, Path: runtime.routes.fullModeResetPath, Headers: badSessionHeaders, Body: body})
-	response, err = runtime.handleManagement(badSessionRequest)
-	if err != nil || response.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("invalid session reset response: %+v, %v", response, err)
-	}
-
-	getRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.fullModeResetPath})
-	response, err = runtime.handleManagement(getRequest)
-	if err != nil || response.StatusCode != http.StatusMethodNotAllowed {
-		t.Fatalf("wrong method reset response: %+v, %v", response, err)
 	}
 
 	session, err := runtime.createFullModeSession()
 	if err != nil {
 		t.Fatal(err)
 	}
-	authorizedHeaders := headers.Clone()
-	authorizedHeaders.Set("X-Full-Mode-Session", session)
-	authorized, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodPost, Path: runtime.routes.fullModeResetPath, Headers: authorizedHeaders, Body: body})
+	headers := http.Header{"X-Full-Mode-Session": []string{session}}
+	missingConfirmation, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.fullModeResetPath, Headers: headers.Clone()})
+	response, err = runtime.handleManagement(missingConfirmation)
+	if err != nil || response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("missing confirmation reset response: %+v, %v", response, err)
+	}
+
+	postRequest, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodPost, Path: runtime.routes.fullModeResetPath, Headers: headers.Clone()})
+	response, err = runtime.handleManagement(postRequest)
+	if err != nil || response.StatusCode != http.StatusMethodNotAllowed || response.Headers.Get("Allow") != http.MethodGet {
+		t.Fatalf("resource reset must be GET-only: %+v, %v", response, err)
+	}
+
+	headers.Set("X-Confirm-Reset", "reset")
+	authorized, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodGet, Path: runtime.routes.fullModeResetPath, Headers: headers})
 	response, err = runtime.handleManagement(authorized)
 	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"reset":true`) {
 		t.Fatalf("authorized reset response: %+v, %v", response, err)
@@ -454,10 +449,45 @@ func TestFullModeResetRequiresSession(t *testing.T) {
 		t.Fatalf("stats after reset: %+v, %v", response, err)
 	}
 
-	managementReset, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodPost, Path: runtime.routes.resetPath, Headers: headers.Clone(), Body: body})
+	body := []byte(`{"confirm":"reset"}`)
+	managementHeaders := http.Header{"Content-Type": []string{"application/json"}}
+	managementReset, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodPost, Path: runtime.routes.resetPath, Headers: managementHeaders, Body: body})
 	response, err = runtime.handleManagement(managementReset)
 	if err != nil || response.StatusCode != http.StatusOK {
 		t.Fatalf("management reset route must remain available: %+v, %v", response, err)
+	}
+}
+
+func TestFullModeUploadBeginEnforcesPayloadAndSessionLimits(t *testing.T) {
+	runtime := &pluginRuntime{}
+	defer runtime.shutdown()
+	session, err := runtime.createFullModeSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	headers := http.Header{"X-Full-Mode-Session": []string{session}}
+	call := func(chunks int) pluginapi.ManagementResponse {
+		t.Helper()
+		request := pluginapi.ManagementRequest{Method: http.MethodGet, Headers: headers, Query: map[string][]string{"stage": {"begin"}, "chunks": {strconv.Itoa(chunks)}}}
+		response, callErr := runtime.fullModeStagedPayloadResponse(request, 2<<20, "application/json", func(pluginapi.ManagementRequest) (pluginapi.ManagementResponse, error) {
+			return jsonResponse(http.StatusOK, map[string]bool{"ok": true}), nil
+		})
+		if callErr != nil {
+			t.Fatal(callErr)
+		}
+		return response
+	}
+	maxChunks := (base64.RawURLEncoding.EncodedLen(2<<20) + fullModeUploadChunkSize - 1) / fullModeUploadChunkSize
+	if response := call(maxChunks + 1); response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("oversized begin status = %d body=%s", response.StatusCode, response.Body)
+	}
+	for range maxFullModeUploadsPerSession {
+		if response := call(1); response.StatusCode != http.StatusOK {
+			t.Fatalf("allowed begin status = %d body=%s", response.StatusCode, response.Body)
+		}
+	}
+	if response := call(1); response.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("concurrent upload limit status = %d body=%s", response.StatusCode, response.Body)
 	}
 }
 

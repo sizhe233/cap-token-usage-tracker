@@ -5,7 +5,7 @@ This fork is pinned to the audited upstream baseline `v2.0.3` (`4bcf440844bbfef4
 ## Authentication boundary
 
 - `/v0/resource/plugins/<id>/dashboard` and `/full-dashboard` may return static HTML shells only.
-- Every resource route that returns or mutates runtime data must require a valid `X-Full-Mode-Session` token:
+- Every resource route that returns or mutates runtime data must require a valid `X-Full-Mode-Session` token. Resource routes must remain GET-compatible because CPA dispatches them as GET-only:
   - `/stats`, `/stats/initial`, `/stats/trends`, `/stats/groups`
   - `/requests`, `/costs`, `/exchange-rate`, `/prices`, `/preferences`
   - every `/full-mode/*` route except the static `/full-dashboard` shell
