@@ -14,7 +14,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v7/sdk/pluginapi"
 )
 
-const fullModeSessionTTL = 15 * time.Minute
+const fullModeSessionTTL = 5 * time.Minute
 
 const (
 	fullModeUploadTTL       = fullModeSessionTTL

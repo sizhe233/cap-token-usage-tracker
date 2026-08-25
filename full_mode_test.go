@@ -112,7 +112,7 @@ func TestFullModeSessionProtectsFullModeResources(t *testing.T) {
 	}
 }
 
-func TestFullModeDefaultSecretWarningTracksSuccessfulReconfigure(t *testing.T) {
+func TestFullModeAPIKeyTrackingTracksSuccessfulReconfigure(t *testing.T) {
 	config := testConfig(t)
 	runtime := &pluginRuntime{}
 	defer runtime.shutdown()
@@ -124,7 +124,7 @@ func TestFullModeDefaultSecretWarningTracksSuccessfulReconfigure(t *testing.T) {
 		}
 		return payload
 	}
-	if _, err := runtime.register(lifecyclePayload(defaultAPIKeySecret)); err != nil {
+	if _, err := runtime.register(lifecyclePayload("")); err != nil {
 		t.Fatal(err)
 	}
 	registration, _ := json.Marshal(pluginapi.ManagementRegistrationRequest{ResourceBasePath: "/v0/resource/plugins/test"})
@@ -142,8 +142,8 @@ func TestFullModeDefaultSecretWarningTracksSuccessfulReconfigure(t *testing.T) {
 	})
 
 	response, err := runtime.handleManagement(request)
-	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"api_key_uses_default_secret":true`) {
-		t.Fatalf("default-secret full-mode data = %+v, %v", response, err)
+	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"api_key_tracking_enabled":false`) {
+		t.Fatalf("disabled-tracking full-mode data = %+v, %v", response, err)
 	}
 
 	customSecret := strings.Repeat("custom-secret-", 3)
@@ -151,7 +151,7 @@ func TestFullModeDefaultSecretWarningTracksSuccessfulReconfigure(t *testing.T) {
 		t.Fatal(err)
 	}
 	response, err = runtime.handleManagement(request)
-	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"api_key_uses_default_secret":false`) {
+	if err != nil || response.StatusCode != http.StatusOK || !strings.Contains(string(response.Body), `"api_key_tracking_enabled":true`) || !strings.Contains(string(response.Body), `"api_key_uses_default_secret":false`) {
 		t.Fatalf("custom-secret full-mode data = %+v, %v", response, err)
 	}
 }

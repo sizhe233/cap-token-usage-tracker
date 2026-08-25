@@ -16,7 +16,7 @@ import (
 
 func TestAPIKeyTrackingRedactionRevealFilteringAndBackup(t *testing.T) {
 	config := testConfig(t)
-	config.APIKeySecret = defaultAPIKeySecret
+	config.APIKeySecret = strings.Repeat("test-secret-", 3)
 	config.SyncOnRecord = true
 	crypto, err := deriveCryptoContext(config.APIKeySecret)
 	if err != nil {
@@ -231,7 +231,7 @@ func TestAPIKeyTrackingRedactionRevealFilteringAndBackup(t *testing.T) {
 
 func TestRepeatedAPIKeyRefsUnionAcrossStatsRequestsAndCosts(t *testing.T) {
 	config := testConfig(t)
-	config.APIKeySecret = defaultAPIKeySecret
+	config.APIKeySecret = strings.Repeat("test-secret-", 3)
 	config.SyncOnRecord = true
 	crypto, err := deriveCryptoContext(config.APIKeySecret)
 	if err != nil {
@@ -332,7 +332,7 @@ func TestRepeatedAPIKeyRefsUnionAcrossStatsRequestsAndCosts(t *testing.T) {
 
 func TestUnknownAPIKeyRefFilterReturnsEmptyResult(t *testing.T) {
 	config := testConfig(t)
-	config.APIKeySecret = defaultAPIKeySecret
+	config.APIKeySecret = strings.Repeat("test-secret-", 3)
 	config.SyncOnRecord = true
 	crypto, err := deriveCryptoContext(config.APIKeySecret)
 	if err != nil {
@@ -432,7 +432,7 @@ func TestDisabledAPIKeyTrackingDropsAllKeyMaterial(t *testing.T) {
 
 func TestEnabledTrackingMarksMissingHostAPIKeyWithoutExposingIdentity(t *testing.T) {
 	config := testConfig(t)
-	config.APIKeySecret = defaultAPIKeySecret
+	config.APIKeySecret = strings.Repeat("test-secret-", 3)
 	config.SyncOnRecord = true
 	crypto, err := deriveCryptoContext(config.APIKeySecret)
 	if err != nil {

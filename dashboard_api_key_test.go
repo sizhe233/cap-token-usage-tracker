@@ -125,8 +125,8 @@ func TestAPIKeyLocaleCatalog(t *testing.T) {
 				t.Fatalf("locale %s missing %q", code, key)
 			}
 		}
-		if !strings.Contains(catalog["apiKey.defaultSecretWarning"], defaultAPIKeySecret) || !strings.Contains(catalog["apiKey.defaultSecretWarning"], "32") {
-			t.Fatalf("locale %s warning does not explain the default and minimum strength", code)
+		if !strings.Contains(catalog["apiKey.defaultSecretWarning"], "32") {
+			t.Fatalf("locale %s warning does not explain the minimum strength", code)
 		}
 	}
 }

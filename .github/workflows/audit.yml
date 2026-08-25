@@ -1,0 +1,41 @@
+name: Audit
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Test, vet, and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: "1.26"
+      - name: Reject tracked build artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files | grep -E '\.(exe|dll|so|dylib|h)$'; then
+            echo "tracked build artifact detected" >&2
+            exit 1
+          fi
+      - name: Test
+        run: go test -count=1 ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Build Linux amd64 plugin
+        env:
+          CGO_ENABLED: "1"
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          go build -buildmode=c-shared -trimpath -buildvcs=false \
+            -ldflags="-s -w -X main.version=2.0.3-audit.1" \
+            -o cap-token-usage-tracker.so .

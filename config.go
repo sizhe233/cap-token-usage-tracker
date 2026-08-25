@@ -47,7 +47,7 @@ func defaultConfig() Config {
 		FlushInterval:               defaultFlushInterval,
 		FlushMaxRecords:             defaultFlushMaxRecords,
 		SyncOnRecord:                true,
-		APIKeySecret:                defaultAPIKeySecret,
+		APIKeySecret:                "",
 		ResponseCompression:         defaultResponseCompression,
 		ResponseCompressionMinBytes: defaultResponseCompressionMinBytes,
 	}
@@ -107,8 +107,8 @@ func normalizeConfig(cfg Config) (Config, error) {
 	if cfg.FlushMaxRecords < 1 || cfg.FlushMaxRecords > 1_000_000 {
 		return Config{}, fmt.Errorf("flush_max_records must be between 1 and 1000000")
 	}
-	if cfg.APIKeySecret != "" && cfg.APIKeySecret != defaultAPIKeySecret && len([]byte(cfg.APIKeySecret)) < 32 {
-		return Config{}, fmt.Errorf("api_key_secret must be empty, 123456, or at least 32 bytes")
+	if cfg.APIKeySecret != "" && len([]byte(cfg.APIKeySecret)) < 32 {
+		return Config{}, fmt.Errorf("api_key_secret must be empty or at least 32 bytes")
 	}
 	if cfg.ResponseCompressionMinBytes < 0 || cfg.ResponseCompressionMinBytes > maxResponseCompressionMinBytes {
 		return Config{}, fmt.Errorf("response_compression_min_bytes must be between 0 and %d", maxResponseCompressionMinBytes)

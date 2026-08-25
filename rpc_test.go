@@ -64,7 +64,7 @@ func TestRPCNegotiatesHostSchemaAndShutdown(t *testing.T) {
 				if registered.SchemaVersion != test.wantSchema || !registered.Capabilities.UsagePlugin || !registered.Capabilities.ManagementAPI {
 					t.Fatalf("unexpected %s registration: %+v", method, registered)
 				}
-				if registered.Metadata.GitHubRepository != "https://github.com/AITNR/cap-token-usage-tracker" {
+				if registered.Metadata.GitHubRepository != "https://github.com/sizhe233/cap-token-usage-tracker" {
 					t.Fatalf("unexpected metadata: %+v", registered.Metadata)
 				}
 			}

@@ -12,9 +12,9 @@ func TestAPIKeySecretConfigSemantics(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{name: "missing uses public default", yaml: "", want: defaultAPIKeySecret},
+		{name: "missing disables tracking", yaml: "", want: ""},
 		{name: "explicit empty disables", yaml: "api_key_secret: \"\"\n", want: ""},
-		{name: "explicit default", yaml: "api_key_secret: \"123456\"\n", want: defaultAPIKeySecret},
+		{name: "legacy public default rejected", yaml: "api_key_secret: \"123456\"\n", wantErr: true},
 		{name: "short custom rejected", yaml: "api_key_secret: short\n", wantErr: true},
 		{name: "32 bytes accepted", yaml: "api_key_secret: \"" + strings.Repeat("a", 32) + "\"\n", want: strings.Repeat("a", 32)},
 		{name: "utf8 counts bytes", yaml: "api_key_secret: \"密密密密密密密密密密密\"\n", want: "密密密密密密密密密密密"},

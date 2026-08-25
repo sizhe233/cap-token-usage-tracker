@@ -299,7 +299,7 @@ func TestSchemaSixDatabaseMigratesToCryptoIdentity(t *testing.T) {
 
 func TestMigrationPreservesAPIKeyDataWithoutCryptoIdentity(t *testing.T) {
 	config := testConfig(t)
-	config.APIKeySecret = defaultAPIKeySecret
+	config.APIKeySecret = strings.Repeat("test-secret-", 3)
 	db, err := bolt.Open(config.DataPath, 0o600, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -536,7 +536,7 @@ func TestAPIKeyGenerationRegistryRejectsAmbiguousMetadata(t *testing.T) {
 
 func TestOpenDegradesIncompleteCryptoIdentityMetadata(t *testing.T) {
 	config := testConfig(t)
-	config.APIKeySecret = defaultAPIKeySecret
+	config.APIKeySecret = strings.Repeat("test-secret-", 3)
 	ctx, err := deriveCryptoContext(config.APIKeySecret)
 	if err != nil {
 		t.Fatal(err)

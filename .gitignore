@@ -4,6 +4,7 @@ dist/
 *.dylib
 *.so
 *.h
+*.exe
 
 # Runtime data
 *.db

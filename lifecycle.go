@@ -264,15 +264,15 @@ func pluginRegistration(schemaVersion uint32) registration {
 		Metadata: pluginapi.Metadata{
 			Name:             "CAP Token Usage Tracker",
 			Version:          version,
-			Author:           "AITNR",
-			GitHubRepository: "https://github.com/AITNR/cap-token-usage-tracker",
+			Author:           "AITNR / sizhe233 audited fork",
+			GitHubRepository: "https://github.com/sizhe233/cap-token-usage-tracker",
 			ConfigFields: []pluginapi.ConfigField{
 				{Name: "data_path", Type: pluginapi.ConfigFieldTypeString, Description: "bbolt database path; defaults to the data directory next to the discovered plugins directory, while explicit relative paths use the CLIProxyAPI working directory."},
 				{Name: "retention_days", Type: pluginapi.ConfigFieldTypeInteger, Description: "Number of UTC days of minute-level statistics and request details to retain (1-3650)."},
 				{Name: "flush_interval", Type: pluginapi.ConfigFieldTypeString, Description: "Maximum delay before batched statistics are flushed, for example 5s."},
 				{Name: "flush_max_records", Type: pluginapi.ConfigFieldTypeInteger, Description: "Flush after this many accepted usage records."},
 				{Name: "sync_on_record", Type: pluginapi.ConfigFieldTypeBoolean, Description: "Commit every usage record before acknowledging it."},
-				{Name: "api_key_secret", Type: pluginapi.ConfigFieldTypeString, Description: "Secret for API-key encryption and keyed fingerprints. Defaults to 123456; set a custom value of at least 32 bytes for protection against database disclosure. Empty disables API-key tracking. Changing the value starts a new crypto generation while preserving historical records."},
+				{Name: "api_key_secret", Type: pluginapi.ConfigFieldTypeString, Description: "Secret for API-key encryption and keyed fingerprints. Empty by default, which disables API-key tracking; set an explicit value of at least 32 bytes to enable tracking. Changing the value starts a new crypto generation while preserving historical records."},
 				{Name: "response_compression", Type: pluginapi.ConfigFieldTypeBoolean, Description: "Compress eligible public dashboard HTML and JSON responses with gzip when supported by the client. Defaults to true."},
 				{Name: "response_compression_min_bytes", Type: pluginapi.ConfigFieldTypeInteger, Description: "Minimum eligible public response size in bytes before gzip compression. Defaults to 1024; range 0-16777216."},
 			},

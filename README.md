@@ -64,7 +64,7 @@ CAP Token Usage Tracker 是 CLIProxyAPI 的持久化 Token 用量统计插件。
 - bbolt 数据库备份与恢复
 - API Key 明文查看、筛选、标签管理和密钥安全状态提示
 
-完整模式会话有效期为 15 分钟。会话令牌通过 `X-Full-Mode-Session` 请求头发送，不写入数据库；退出完整模式时会主动撤销。页面导航时使用 URL fragment 临时传递令牌，加载后立即从地址栏清除。管理密钥不作为后续操作的鉴权凭据保存在前端，价格、导出、备份和恢复直接使用当前内存中的会话令牌。
+完整模式会话有效期为 5 分钟。会话令牌通过 `X-Full-Mode-Session` 请求头发送，不写入数据库；退出完整模式时会主动撤销。页面导航时使用 URL fragment 临时传递令牌，加载后立即从地址栏清除。管理密钥不作为后续操作的鉴权凭据保存在前端，价格、导出、备份和恢复直接使用当前内存中的会话令牌。
 
 完整模式 HTML 本身不嵌入受保护数据。API Key 明文、标签和密钥安全状态由带 `X-Full-Mode-Session` 鉴权的资源接口按需返回，不能写进普通模式 HTML、普通资源响应或前端静态脚本。仅通过 CSS 隐藏元素不能保护敏感数据。
 
@@ -92,7 +92,7 @@ CAP Token Usage Tracker 是 CLIProxyAPI 的持久化 Token 用量统计插件。
 
 来源字段会进行凭据清理。疑似 API Key、Bearer Token 或其他凭据形式的来源不会按原值保存；插件会尽量回退到规范化的提供商服务地址。
 
-API Key 跟踪默认使用公开密钥 `123456`。该默认值只能提供误显示防护，任何获得数据库或备份的人都可以使用它解密其中保存的 API Key；完整模式会持续显示安全警告。生产环境应配置至少 32 字节的自定义 `api_key_secret`。成功应用自定义密钥后，警告会在重新打开完整模式、手动刷新或下一次 15 秒自动刷新时消失。
+本 Fork 默认关闭 API Key 跟踪，不保存 API Key 密文或指纹。只有显式配置至少 32 字节的 `api_key_secret` 后才会启用 API Key 跟踪。
 
 更换 `api_key_secret` 不会删除数据库或历史统计，而是创建或激活对应的加密代际。当前密钥无法解密的旧代 API Key 显示“明文不可用”；切回对应旧密钥后可以再次读取。将 `api_key_secret` 设为空字符串会禁用 API Key 跟踪，之后收到的记录不会保存 API Key 密文或指纹。
 
@@ -123,7 +123,7 @@ plugins:
       flush_interval: 5s
       flush_max_records: 100
       sync_on_record: true
-      api_key_secret: "replace-with-a-random-secret-at-least-32-bytes"
+      api_key_secret: ""
       response_compression: true
       response_compression_min_bytes: 1024
 ```
@@ -135,11 +135,11 @@ plugins:
 | `flush_interval` | `5s` | 批量模式最长刷盘间隔，范围 1 秒-1 小时 |
 | `flush_max_records` | `100` | 批量模式达到该记录数时立即刷盘，范围 1-1000000 |
 | `sync_on_record` | `true` | 每条记录提交数据库后再确认；设为 `false` 时启用批量模式 |
-| `api_key_secret` | `123456` | API Key 加密和带密钥指纹使用的密钥；自定义值至少 32 字节，空字符串禁用 API Key 跟踪 |
+| `api_key_secret` | 空字符串 | 默认不记录 API Key；设置至少 32 字节的显式密钥后才启用加密跟踪 |
 | `response_compression` | `true` | 客户端支持 gzip 时压缩公共仪表盘 HTML 和 JSON 响应；管理接口保持未压缩 |
 | `response_compression_min_bytes` | `1024` | 启用 gzip 的最小响应字节数，范围 0-16777216 |
 
-示例中的 `api_key_secret` 只是占位符，部署时必须替换。含 `#`、`:`、`{}` 等特殊字符的值应使用 YAML 引号包裹；长度按 UTF-8 字节计算。该密钥会保存在 CLIProxyAPI 配置中，因此应限制配置文件权限，避免提交到公开仓库，也不要与数据库备份一起分发。
+`api_key_secret` 默认留空并关闭 API Key 跟踪。只有确实需要按下游 Key 分析时，才应设置至少 32 字节的随机密钥；含 `#`、`:`、`{}` 等特殊字符的值应使用 YAML 引号包裹。该密钥保存在 CLIProxyAPI 配置中，应限制配置文件权限，避免提交到公开仓库，也不要与数据库备份一起分发。
 
 默认 `sync_on_record: true` 优先保证记录持久化。设为 `false` 可以减少写入次数，但进程被强制终止时，最多可能丢失一个 `flush_interval` 或尚未达到 `flush_max_records` 的窗口。
 
@@ -365,7 +365,7 @@ Full mode keeps the same dashboard layout and statistics while adding:
 - bbolt database backup and restore
 - API-key reveal, filtering, label management, and secret-security status
 
-The full-mode session lasts 15 minutes. The capability is sent in the `X-Full-Mode-Session` header, is not persisted to the database, and is revoked when Full Mode is exited. Navigation temporarily carries it in the URL fragment, which is removed immediately after page initialization. The management key is not retained for later operations; pricing, export, backup, and restore use the current in-memory capability.
+The full-mode session lasts 5 minutes. The capability is sent in the `X-Full-Mode-Session` header, is not persisted to the database, and is revoked when Full Mode is exited. Navigation temporarily carries it in the URL fragment, which is removed immediately after page initialization. The management key is not retained for later operations; pricing, export, backup, and restore use the current in-memory capability.
 
 The full-mode HTML does not embed protected data. API-key plaintext, labels, and secret-security status are returned on demand only by capability-protected resource endpoints. They are not included in normal-mode HTML, normal resource responses, or static frontend scripts. CSS visibility is not a security boundary.
 
@@ -386,7 +386,7 @@ The database contains minute-level aggregates, per-request operational metadata,
 
 Source fields are credential-sanitized. Values that resemble API keys, bearer tokens, or other credentials are not persisted verbatim; the plugin falls back to a normalized provider service address when possible.
 
-API-key tracking defaults to the public secret `123456`. This default only prevents accidental display: anyone who obtains the database or a backup can use it to decrypt stored API keys, so full mode continuously shows a security warning. Production deployments should configure a custom `api_key_secret` of at least 32 bytes. After the custom secret is successfully applied, the warning disappears when full mode is reopened, manually refreshed, or automatically refreshed within 15 seconds.
+This fork disables API-key tracking by default, so API-key ciphertext and fingerprints are not persisted. Tracking is enabled only after an explicit `api_key_secret` of at least 32 bytes is configured.
 
 Changing `api_key_secret` does not delete the database or historical statistics. It creates or activates the matching crypto generation. API keys from generations unavailable under the current secret are shown as "Plaintext unavailable" and become readable again after switching back to the matching older secret. Setting `api_key_secret` to an empty string disables API-key tracking for subsequently received records.
 
@@ -417,7 +417,7 @@ plugins:
       flush_interval: 5s
       flush_max_records: 100
       sync_on_record: true
-      api_key_secret: "replace-with-a-random-secret-at-least-32-bytes"
+      api_key_secret: ""
       response_compression: true
       response_compression_min_bytes: 1024
 ```
@@ -429,11 +429,11 @@ plugins:
 | `flush_interval` | `5s` | Maximum batch-mode flush interval, from 1 second to 1 hour |
 | `flush_max_records` | `100` | Flush after this many batched records, from 1 to 1000000 |
 | `sync_on_record` | `true` | Commit each record before acknowledgment; set to `false` for batch mode |
-| `api_key_secret` | `123456` | Secret used for API-key encryption and keyed fingerprints; custom values must be at least 32 bytes, and an empty string disables API-key tracking |
+| `api_key_secret` | empty string | API keys are not recorded by default; set an explicit secret of at least 32 bytes to enable encrypted tracking |
 | `response_compression` | `true` | Compress public dashboard HTML and JSON responses when the client supports gzip; management endpoints remain uncompressed |
 | `response_compression_min_bytes` | `1024` | Minimum response size in bytes before gzip is used, from 0 to 16777216 |
 
-The `api_key_secret` in the example is a placeholder and must be replaced for deployment. Quote YAML values containing special characters such as `#`, `:`, or `{}`; the minimum length is measured in UTF-8 bytes. The secret is stored in CLIProxyAPI configuration, so restrict access to that file, do not commit it to a public repository, and do not distribute it with database backups.
+`api_key_secret` is empty by default and disables API-key tracking. Configure a random secret of at least 32 bytes only when per-key analytics are required. Quote values containing special characters such as `#`, `:`, or `{}`. Restrict access to the CLIProxyAPI configuration, do not commit the secret, and do not distribute it with database backups.
 
 The default `sync_on_record: true` prioritizes durability. With batch mode enabled, a forced process termination may lose up to one `flush_interval` or the records below the `flush_max_records` threshold.
 

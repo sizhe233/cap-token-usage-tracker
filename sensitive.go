@@ -70,8 +70,8 @@ func deriveCryptoContext(secret string) (cryptoContext, error) {
 	if secret == "" {
 		return cryptoContext{}, nil
 	}
-	if secret != defaultAPIKeySecret && len([]byte(secret)) < 32 {
-		return cryptoContext{}, errors.New("api_key_secret must be empty, 123456, or at least 32 bytes")
+	if len([]byte(secret)) < 32 {
+		return cryptoContext{}, errors.New("api_key_secret must be empty or at least 32 bytes")
 	}
 	ctx := cryptoContext{
 		encKey:            deriveDomainKey(secret, "api-key-encryption"),

@@ -65,13 +65,12 @@ func TestCryptoContextAndAPIKeyCiphertext(t *testing.T) {
 }
 
 func TestCryptoContextDefaultDisabledAndValidation(t *testing.T) {
-	ctx, err := deriveCryptoContext(defaultAPIKeySecret)
-	if err != nil || !ctx.enabled || !ctx.usesDefaultSecret {
-		t.Fatalf("default context = %+v, %v", ctx, err)
-	}
 	disabled, err := deriveCryptoContext("")
 	if err != nil || disabled.enabled || disabled.keyID != "" {
 		t.Fatalf("disabled context = %+v, %v", disabled, err)
+	}
+	if _, err := deriveCryptoContext(defaultAPIKeySecret); err == nil {
+		t.Fatal("legacy public default secret was accepted")
 	}
 	if _, err := deriveCryptoContext("short-secret"); err == nil {
 		t.Fatal("short custom secret was accepted")

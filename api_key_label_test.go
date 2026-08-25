@@ -13,7 +13,7 @@ import (
 
 func TestAPIKeyLabelResourceValidationAndPersistence(t *testing.T) {
 	config := testConfig(t)
-	config.APIKeySecret = defaultAPIKeySecret
+	config.APIKeySecret = strings.Repeat("test-secret-", 3)
 	config.SyncOnRecord = true
 	ctx, _ := deriveCryptoContext(config.APIKeySecret)
 	store, err := openStoreWithCrypto(config, ctx)
