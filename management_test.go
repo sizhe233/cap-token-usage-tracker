@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -133,8 +134,8 @@ func TestAccountStatsUsesCurrentPriceBook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := accounts[ref].EstimatedCostUSD; got != 0.0039 {
-		t.Fatalf("estimated cost = %v, want 0.0039", got)
+	if math.Abs(accounts[ref].EstimatedCostUSD-0.0039) > 1e-12 {
+		t.Fatalf("estimated cost = %v, want 0.0039", accounts[ref].EstimatedCostUSD)
 	}
 }
 
