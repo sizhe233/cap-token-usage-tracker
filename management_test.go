@@ -106,6 +106,38 @@ func TestAccountStatsManagementEndpoint(t *testing.T) {
 	}
 }
 
+func TestAccountStatsUsesCurrentPriceBook(t *testing.T) {
+	config := testConfig(t)
+	config.AccountTrackingSecret = strings.Repeat("account-secret-", 3)
+	store, err := openStore(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	tracking, err := deriveAccountTrackingContext(config.AccountTrackingSecret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref := accountReference("priced-account", tracking)
+	if _, err := store.SaveModelPrices(map[string]ModelPrice{"priced-model": {Input: 2, Output: 4, CacheRead: 1, CacheCreation: 3}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Record(normalizedUsage{Dimensions: Dimensions{Model: "priced-model", AccountRef: ref}, RequestedAt: time.Now().UTC(), Counters: Counters{Requests: 1, InputTokens: 1000, OutputTokens: 500, CacheReadTokens: 200, CacheCreationTokens: 100, TotalTokens: 1700}}); err != nil {
+		t.Fatal(err)
+	}
+	queryRange, err := presetUsageRange("24h", time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	accounts, err := store.queryAccountStats(queryRange, map[string]struct{}{ref: {}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := accounts[ref].EstimatedCostUSD; got != 0.0051 {
+		t.Fatalf("estimated cost = %v, want 0.0051", got)
+	}
+}
+
 func TestAccountStatsDisabledResponseDoesNotExposeRefs(t *testing.T) {
 	config := testConfig(t)
 	store, err := openStore(config)
