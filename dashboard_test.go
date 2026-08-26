@@ -776,7 +776,7 @@ func TestDashboardUsesManagementCenterCapabilityBridge(t *testing.T) {
 			`protocol:'cliproxy-plugin-capability-v1'`,
 			`type:'request'`,
 			`event.source!==window.parent`,
-			`event.origin!=='null'`,
+			`event.origin!==window.location.origin`,
 			`message.pluginID!==pluginID`,
 			`message.requestID!==pluginCapabilityRequestID`,
 			`crypto.getRandomValues(bytes)`,
