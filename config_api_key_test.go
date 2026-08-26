@@ -37,3 +37,31 @@ func TestAPIKeySecretConfigSemantics(t *testing.T) {
 		})
 	}
 }
+
+func TestAccountTrackingSecretConfigSemantics(t *testing.T) {
+	tests := []struct {
+		name string
+		yaml string
+		want string
+		err  bool
+	}{
+		{name: "missing disables tracking", yaml: "", want: ""},
+		{name: "explicit empty disables", yaml: "account_tracking_secret: \"\"\n", want: ""},
+		{name: "short secret rejected", yaml: "account_tracking_secret: short\n", err: true},
+		{name: "32 bytes accepted", yaml: "account_tracking_secret: \"" + strings.Repeat("a", 32) + "\"\n", want: strings.Repeat("a", 32)},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			config, err := parseConfig([]byte(test.yaml))
+			if test.err {
+				if err == nil {
+					t.Fatalf("accepted short account tracking secret")
+				}
+				return
+			}
+			if err != nil || config.AccountTrackingSecret != test.want {
+				t.Fatalf("secret = %q, err = %v", config.AccountTrackingSecret, err)
+			}
+		})
+	}
+}

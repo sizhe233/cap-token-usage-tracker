@@ -11,7 +11,7 @@ import (
 const accountReferencePrefix = "acct_"
 
 type accountTrackingContext struct {
-	key     [32]byte
+	key     []byte
 	enabled bool
 }
 
@@ -22,10 +22,7 @@ func deriveAccountTrackingContext(secret string) (accountTrackingContext, error)
 	if len([]byte(secret)) < 32 {
 		return accountTrackingContext{}, errors.New("account_tracking_secret must be empty or at least 32 bytes")
 	}
-	return accountTrackingContext{
-		key:     deriveDomainKey(secret, "account-identity"),
-		enabled: true,
-	}, nil
+	return accountTrackingContext{key: []byte(secret), enabled: true}, nil
 }
 
 func accountReference(authIndex string, context accountTrackingContext) string {

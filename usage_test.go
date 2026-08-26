@@ -88,6 +88,46 @@ func TestDecodeUsageKeepsAuthIndexTransient(t *testing.T) {
 	}
 }
 
+func TestAccountReferenceIsOpaqueStableAndSecretScoped(t *testing.T) {
+	first, err := deriveAccountTrackingContext(strings.Repeat("a", 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := deriveAccountTrackingContext(strings.Repeat("b", 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref := accountReference("stable-auth-index", first)
+	if !validAccountReference(ref) || ref != accountReference("stable-auth-index", first) || ref == accountReference("stable-auth-index", second) {
+		t.Fatalf("account reference stability/scope failed: %q", ref)
+	}
+	if strings.Contains(ref, "stable-auth-index") || strings.Contains(ref, "@") {
+		t.Fatalf("account reference leaks source identity: %q", ref)
+	}
+}
+
+func TestHandleUsagePersistsAccountReferenceWithoutRawAuthIndex(t *testing.T) {
+	config := testConfig(t)
+	config.AccountTrackingSecret = strings.Repeat("account-secret-", 3)
+	runtime := &pluginRuntime{}
+	defer runtime.shutdown()
+	if err := runtime.applyConfig(config); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(pluginapi.UsageRecord{Provider: "codex", Model: "model", AuthIndex: "raw-account-index", RequestedAt: time.Now().UTC(), Detail: pluginapi.UsageDetail{TotalTokens: 7}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.handleUsage(raw); err != nil {
+		t.Fatal(err)
+	}
+	page, err := runtime.store.QueryRequests("24h", 0, 10, "")
+	encodedPage, marshalErr := json.Marshal(page)
+	if err != nil || marshalErr != nil || len(page.Items) != 1 || !validAccountReference(page.Items[0].AccountRef) || strings.Contains(string(encodedPage), "raw-account-index") {
+		t.Fatalf("account request detail = %+v, err=%v, marshalErr=%v", page, err, marshalErr)
+	}
+}
+
 func TestDecodeUsageReplacesAPIKeySourceWithProviderServiceAddress(t *testing.T) {
 	now := time.Date(2026, 7, 28, 12, 34, 56, 0, time.UTC)
 	apiKey := "sk-user-secret-1234567890"

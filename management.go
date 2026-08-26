@@ -362,8 +362,12 @@ func (r *pluginRuntime) dispatchManagement(request pluginapi.ManagementRequest, 
 }
 
 func (r *pluginRuntime) accountStatsResponse(request pluginapi.ManagementRequest) (pluginapi.ManagementResponse, error) {
-	contentType, _, err := mime.ParseMediaType(request.Headers.Get("Content-Type"))
-	if err != nil || !strings.EqualFold(contentType, "application/json") {
+	contentType := strings.TrimSpace(request.Headers.Get("Content-Type"))
+	if contentType == "" {
+		return jsonResponse(http.StatusUnsupportedMediaType, map[string]any{"error": "Content-Type must be application/json"}), nil
+	}
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil || !strings.EqualFold(mediaType, "application/json") {
 		return jsonResponse(http.StatusUnsupportedMediaType, map[string]any{"error": "Content-Type must be application/json"}), nil
 	}
 	if len(request.Body) > 64<<10 {
@@ -379,20 +383,36 @@ func (r *pluginRuntime) accountStatsResponse(request pluginapi.ManagementRequest
 	if len(input.AuthIndexes) > 100 {
 		return jsonResponse(http.StatusBadRequest, map[string]any{"error": "at most 100 auth indexes may be requested"}), nil
 	}
+	now := nowUTC()
+	queryRange, err := presetUsageRange(input.Range, now)
+	if err != nil {
+		return jsonResponse(errorHTTPStatus(err), map[string]any{"error": err.Error()}), nil
+	}
 	r.mu.RLock()
 	store := r.store
 	tracking := r.accountTracking
 	r.mu.RUnlock()
+	response := AccountStatsResponse{
+		SchemaVersion:          1,
+		Range:                  queryRange.Name,
+		GeneratedAt:            now,
+		AccountTrackingEnabled: tracking.enabled,
+		AccountRefs:            make([]string, len(input.AuthIndexes)),
+		Accounts:               map[string]AccountUsageSummary{},
+	}
+	if !tracking.enabled {
+		return jsonResponse(http.StatusOK, response), nil
+	}
+	if len(input.AuthIndexes) == 0 {
+		return jsonResponse(http.StatusOK, response), nil
+	}
 	if store == nil {
 		return jsonResponse(http.StatusServiceUnavailable, map[string]any{"error": "storage is not initialized"}), nil
 	}
-	queryRange, err := presetUsageRange(input.Range, nowUTC())
-	if err != nil {
-		return jsonResponse(errorHTTPStatus(err), map[string]any{"error": err.Error()}), nil
-	}
 	refs := make(map[string]struct{}, len(input.AuthIndexes))
-	for _, authIndex := range input.AuthIndexes {
+	for index, authIndex := range input.AuthIndexes {
 		if ref := accountReference(authIndex, tracking); ref != "" {
+			response.AccountRefs[index] = ref
 			refs[ref] = struct{}{}
 		}
 	}
@@ -400,7 +420,8 @@ func (r *pluginRuntime) accountStatsResponse(request pluginapi.ManagementRequest
 	if err != nil {
 		return jsonResponse(errorHTTPStatus(err), map[string]any{"error": err.Error()}), nil
 	}
-	return jsonResponse(http.StatusOK, AccountStatsResponse{SchemaVersion: 1, Range: queryRange.Name, GeneratedAt: nowUTC(), Accounts: accounts}), nil
+	response.Accounts = accounts
+	return jsonResponse(http.StatusOK, response), nil
 }
 
 func (r *pluginRuntime) statsResponse(request pluginapi.ManagementRequest) (pluginapi.ManagementResponse, error) {

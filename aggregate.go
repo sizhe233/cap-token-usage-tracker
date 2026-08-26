@@ -47,10 +47,12 @@ type AccountUsageSummary struct {
 }
 
 type AccountStatsResponse struct {
-	SchemaVersion uint32                         `json:"schema_version"`
-	Range         string                         `json:"range"`
-	GeneratedAt   time.Time                      `json:"generated_at"`
-	Accounts      map[string]AccountUsageSummary `json:"accounts"`
+	SchemaVersion          uint32                         `json:"schema_version"`
+	Range                  string                         `json:"range"`
+	GeneratedAt            time.Time                      `json:"generated_at"`
+	AccountTrackingEnabled bool                           `json:"account_tracking_enabled"`
+	AccountRefs            []string                       `json:"account_refs"`
+	Accounts               map[string]AccountUsageSummary `json:"accounts"`
 }
 
 func (s AccountUsageSummary) add(counters Counters, cost float64, requestedAt time.Time) AccountUsageSummary {
@@ -142,6 +144,7 @@ func (f usageFilter) matches(dimensions Dimensions) bool {
 }
 
 func (d *Dimensions) Redact() {
+	d.AccountRef = ""
 	d.APIKey = ""
 	d.APIKeyHash = ""
 	d.APIKeyGeneration = 0
@@ -827,6 +830,7 @@ func compareDimensions(left, right Dimensions) int {
 		cmp.Compare(left.Model, right.Model),
 		cmp.Compare(left.Alias, right.Alias),
 		cmp.Compare(left.Source, right.Source),
+		cmp.Compare(left.AccountRef, right.AccountRef),
 		cmp.Compare(left.APIKeyGeneration, right.APIKeyGeneration),
 		cmp.Compare(left.APIKeyHash, right.APIKeyHash),
 		cmp.Compare(left.AuthType, right.AuthType),

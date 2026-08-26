@@ -389,7 +389,7 @@ func (s *Store) queryAccountStats(queryRange usageRange, accountRefs map[string]
 	return result.accounts, result.err
 }
 
-func (a *storeActor) queryAccountStats(queryRange usageRange, accountRefs map[string]struct{}, now time.Time) (map[string]AccountUsageSummary, error) {
+func (a *storeActor) queryAccountStats(queryRange usageRange, accountRefs map[string]struct{}) (map[string]AccountUsageSummary, error) {
 	if err := queryRange.validate(); err != nil {
 		return nil, withStatus(400, "%v", err)
 	}
@@ -802,8 +802,9 @@ func (s *Store) run(actor *storeActor) {
 					item.resp <- accountStatsResult{err: err}
 					continue
 				}
-				accounts, err := actor.queryAccountStats(item.queryRange, item.accountRefs, now)
+				accounts, err := actor.queryAccountStats(item.queryRange, item.accountRefs)
 				item.resp <- accountStatsResult{accounts: accounts, err: err}
+			case resetCommand:
 				if err := actor.retryFailedFlush(time.Now().UTC()); err != nil {
 					item.resp <- resetResult{err: err}
 					continue

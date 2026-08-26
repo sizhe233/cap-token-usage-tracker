@@ -34,7 +34,7 @@ func TestManagementRegistrationUsesDynamicPluginID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(registration.Routes) != 7 || registration.Routes[0].Method != http.MethodPost || registration.Routes[0].Path != "/plugins/custom-id/full-mode/session" || registration.Routes[1].Path != "/plugins/custom-id/stats" || registration.Routes[3].Method != http.MethodPut || registration.Routes[3].Path != "/plugins/custom-id/prices" || registration.Routes[4].Path != "/plugins/custom-id/prices/sync" || registration.Routes[5].Method != http.MethodGet || registration.Routes[5].Path != "/plugins/custom-id/backup" || registration.Routes[6].Method != http.MethodPost || registration.Routes[6].Path != "/plugins/custom-id/restore" || len(registration.Resources) != 20 {
+	if len(registration.Routes) != 8 || registration.Routes[0].Method != http.MethodPost || registration.Routes[0].Path != "/plugins/custom-id/full-mode/session" || registration.Routes[1].Method != http.MethodPost || registration.Routes[1].Path != "/plugins/custom-id/account-stats" || registration.Routes[2].Path != "/plugins/custom-id/stats" || registration.Routes[4].Method != http.MethodPut || registration.Routes[4].Path != "/plugins/custom-id/prices" || registration.Routes[5].Path != "/plugins/custom-id/prices/sync" || registration.Routes[6].Method != http.MethodGet || registration.Routes[6].Path != "/plugins/custom-id/backup" || registration.Routes[7].Method != http.MethodPost || registration.Routes[7].Path != "/plugins/custom-id/restore" || len(registration.Resources) != 20 {
 		t.Fatalf("unexpected registration: %+v", registration)
 	}
 	resourcePaths := make(map[string]bool, len(registration.Resources))
@@ -48,6 +48,76 @@ func TestManagementRegistrationUsesDynamicPluginID(t *testing.T) {
 	}
 	if registration.Routes[0].Menu != "" {
 		t.Fatal("authenticated stats route must not declare a legacy menu")
+	}
+}
+
+func TestAccountStatsManagementEndpoint(t *testing.T) {
+	config := testConfig(t)
+	config.AccountTrackingSecret = strings.Repeat("account-secret-", 3)
+	store, err := openStore(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tracking, err := deriveAccountTrackingContext(config.AccountTrackingSecret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref := accountReference("account-one", tracking)
+	if err := store.Record(normalizedUsage{
+		Dimensions:  Dimensions{Provider: "openai", Model: "gpt-test", AccountRef: ref, Failed: true, FailureStatus: 429},
+		RequestedAt: time.Now().UTC().Add(-time.Minute),
+		Counters:    Counters{Requests: 1, FailedRequests: 1, InputTokens: 10, OutputTokens: 5, ReasoningTokens: 2, CacheReadTokens: 3, CacheCreationTokens: 4, TotalTokens: 17},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	runtime := &pluginRuntime{store: store, config: config, accountTracking: tracking, routes: registeredRoutes{pluginID: "test", accountStatsPath: "/v0/management/plugins/test/account-stats"}}
+	defer runtime.shutdown()
+	request := func(body string, headers http.Header) pluginapi.ManagementResponse {
+		raw, marshalErr := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodPost, Path: runtime.routes.accountStatsPath, Headers: headers, Body: []byte(body)})
+		if marshalErr != nil {
+			t.Fatal(marshalErr)
+		}
+		response, handleErr := runtime.handleManagement(raw)
+		if handleErr != nil {
+			t.Fatal(handleErr)
+		}
+		return response
+	}
+	response := request(`{"auth_indexes":["account-one"],"range":"24h"}`, http.Header{"Content-Type": []string{"application/json"}})
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("account stats status = %d body=%s", response.StatusCode, response.Body)
+	}
+	var payload AccountStatsResponse
+	if err := json.Unmarshal(response.Body, &payload); err != nil {
+		t.Fatal(err)
+	}
+	if !payload.AccountTrackingEnabled || len(payload.AccountRefs) != 1 || payload.AccountRefs[0] != ref || payload.Accounts[ref].Requests != 1 || payload.Accounts[ref].FailedRequests != 1 || payload.Accounts[ref].TotalTokens != 17 {
+		t.Fatalf("account stats payload = %+v", payload)
+	}
+	if strings.Contains(string(response.Body), "account-one") {
+		t.Fatalf("raw auth index leaked: %s", response.Body)
+	}
+	if response := request(`{"auth_indexes":["account-one"],"range":"24h","extra":true}`, http.Header{"Content-Type": []string{"application/json"}}); response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("unknown field status = %d body=%s", response.StatusCode, response.Body)
+	}
+	tooMany := `{"auth_indexes":[` + strings.TrimSuffix(strings.Repeat(`"x",`, 101), ",") + `]}`
+	if response := request(tooMany, http.Header{"Content-Type": []string{"application/json"}}); response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("too many indexes status = %d", response.StatusCode)
+	}
+}
+
+func TestAccountStatsDisabledResponseDoesNotExposeRefs(t *testing.T) {
+	config := testConfig(t)
+	store, err := openStore(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime := &pluginRuntime{store: store, config: config, routes: registeredRoutes{pluginID: "test", accountStatsPath: "/v0/management/plugins/test/account-stats"}}
+	defer runtime.shutdown()
+	raw, _ := json.Marshal(pluginapi.ManagementRequest{Method: http.MethodPost, Path: runtime.routes.accountStatsPath, Headers: http.Header{"Content-Type": []string{"application/json"}}, Body: []byte(`{"auth_indexes":["raw-index"],"range":"24h"}`)})
+	response, err := runtime.handleManagement(raw)
+	if err != nil || response.StatusCode != http.StatusOK || strings.Contains(string(response.Body), "raw-index") {
+		t.Fatalf("disabled account stats response = %+v, %v", response, err)
 	}
 }
 

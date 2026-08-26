@@ -9,7 +9,7 @@ The CAP plugin records usage consumption by selected host credential. It does no
 The host UsageRecord supplies `AuthIndex`. CAP derives an opaque `account_ref` with a dedicated HMAC secret:
 
 ```text
-account_ref = acct_ + lower-base64url(HMAC-SHA256(account_tracking_secret, AuthIndex))[:32]
+account_ref = acct_ + lowercase-hex(HMAC-SHA256(account_tracking_secret, AuthIndex)[:16])
 ```
 
 The raw AuthIndex, AuthID, filename, e-mail, account label, and provider credential JSON are never persisted or returned by the account-statistics endpoint.
@@ -58,6 +58,9 @@ The endpoint returns at most 100 requested account summaries per call. It accept
 {
   "schema_version": 1,
   "range": "24h",
+  "generated_at": "...",
+  "account_tracking_enabled": true,
+  "account_refs": ["acct_<opaque-ref>", ""],
   "accounts": {
     "acct_<opaque-ref>": {
       "requests": 0,
@@ -75,7 +78,7 @@ The endpoint returns at most 100 requested account summaries per call. It accept
 }
 ```
 
-Management Center requests only visible cards in bounded batches and keeps the mapping in memory. A card with no AuthIndex, disabled attribution, or no matching historical usage displays an unavailable/zero state, never a guessed account total.
+`account_refs` preserves the exact request order, including empty entries for missing indexes. `accounts` contains only matching opaque references.
 
 ## Quota separation
 

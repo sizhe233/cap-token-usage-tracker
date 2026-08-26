@@ -200,6 +200,7 @@ func (r *pluginRuntime) shutdown() error {
 	defer r.lifecycleMu.Unlock()
 
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	store := r.store
 	r.store = nil
 	r.config = Config{}
@@ -209,7 +210,6 @@ func (r *pluginRuntime) shutdown() error {
 	r.routes = registeredRoutes{}
 	r.exchangeRates = nil
 	r.authResolver = nil
-	r.crypto = cryptoContext{}
 	r.accountTracking = accountTrackingContext{}
 	r.fullModeMu.Lock()
 	r.fullModeSessions = nil

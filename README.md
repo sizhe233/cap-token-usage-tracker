@@ -124,6 +124,7 @@ plugins:
       flush_max_records: 100
       sync_on_record: true
       api_key_secret: ""
+      account_tracking_secret: ""
       response_compression: true
       response_compression_min_bytes: 1024
 ```
@@ -135,11 +136,13 @@ plugins:
 | `flush_interval` | `5s` | 批量模式最长刷盘间隔，范围 1 秒-1 小时 |
 | `flush_max_records` | `100` | 批量模式达到该记录数时立即刷盘，范围 1-1000000 |
 | `sync_on_record` | `true` | 每条记录提交数据库后再确认；设为 `false` 时启用批量模式 |
-| `api_key_secret` | 空字符串 | 默认不记录 API Key；设置至少 32 字节的显式密钥后才启用加密跟踪 |
+| `account_tracking_secret` | 空字符串 | 默认不按账号归因；设置至少 32 字节的独立随机密钥后启用隐私化账号统计 |
 | `response_compression` | `true` | 客户端支持 gzip 时压缩公共仪表盘 HTML 和 JSON 响应；管理接口保持未压缩 |
 | `response_compression_min_bytes` | `1024` | 启用 gzip 的最小响应字节数，范围 0-16777216 |
 
 `api_key_secret` 默认留空并关闭 API Key 跟踪。只有确实需要按下游 Key 分析时，才应设置至少 32 字节的随机密钥；含 `#`、`:`、`{}` 等特殊字符的值应使用 YAML 引号包裹。该密钥保存在 CLIProxyAPI 配置中，应限制配置文件权限，避免提交到公开仓库，也不要与数据库备份一起分发。
+
+`account_tracking_secret` 与 `api_key_secret` 独立。启用后，插件只持久化不可逆的 `acct_` 账号引用以及请求/Token/费用聚合，不保存原始 Auth Index、Auth ID、邮箱、文件名或凭证内容。账号引用无法在没有该密钥的情况下反推原始账号。
 
 默认 `sync_on_record: true` 优先保证记录持久化。设为 `false` 可以减少写入次数，但进程被强制终止时，最多可能丢失一个 `flush_interval` 或尚未达到 `flush_max_records` 的窗口。
 
@@ -418,6 +421,7 @@ plugins:
       flush_max_records: 100
       sync_on_record: true
       api_key_secret: ""
+      account_tracking_secret: ""
       response_compression: true
       response_compression_min_bytes: 1024
 ```
@@ -426,12 +430,14 @@ plugins:
 |---|---:|---|
 | `data_path` | `CLIProxyAPI/data/token-usage-tracker.db` | bbolt database path; explicit relative paths use the CLIProxyAPI working directory |
 | `retention_days` | `365` | Statistics and request-detail retention, from 1 to 3650 days |
-| `flush_interval` | `5s` | Maximum batch-mode flush interval, from 1 second to 1 hour |
 | `flush_max_records` | `100` | Flush after this many batched records, from 1 to 1000000 |
 | `sync_on_record` | `true` | Commit each record before acknowledgment; set to `false` for batch mode |
 | `api_key_secret` | empty string | API keys are not recorded by default; set an explicit secret of at least 32 bytes to enable encrypted tracking |
+| `account_tracking_secret` | empty string | No account attribution by default; set a separate random secret of at least 32 bytes to enable privacy-preserving account statistics |
 | `response_compression` | `true` | Compress public dashboard HTML and JSON responses when the client supports gzip; management endpoints remain uncompressed |
 | `response_compression_min_bytes` | `1024` | Minimum response size in bytes before gzip is used, from 0 to 16777216 |
+
+`account_tracking_secret` is independent from `api_key_secret`. When enabled, CAP persists only opaque `acct_` references and request/token/cost aggregates; it does not persist raw Auth Index, Auth ID, e-mail, filename, or credential content. The original account index cannot be derived without this secret.
 
 `api_key_secret` is empty by default and disables API-key tracking. Configure a random secret of at least 32 bytes only when per-key analytics are required. Quote values containing special characters such as `#`, `:`, or `{}`. Restrict access to the CLIProxyAPI configuration, do not commit the secret, and do not distribute it with database backups.
 
