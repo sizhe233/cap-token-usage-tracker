@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -23,6 +24,7 @@ const (
 )
 
 const maxFullModeUploadsPerSession = 2
+const maxFullModeSessions = 8
 
 type fullModeSession struct {
 	expiresAt time.Time
@@ -43,6 +45,7 @@ func (r *pluginRuntime) createFullModeSession() (string, error) {
 	now := nowUTC()
 	hash := sha256.Sum256(tokenBytes[:])
 	r.fullModeMu.Lock()
+	defer r.fullModeMu.Unlock()
 	if r.fullModeSessions == nil {
 		r.fullModeSessions = make(map[[32]byte]fullModeSession)
 	}
@@ -51,8 +54,10 @@ func (r *pluginRuntime) createFullModeSession() (string, error) {
 			delete(r.fullModeSessions, key)
 		}
 	}
+	if len(r.fullModeSessions) >= maxFullModeSessions {
+		return "", errors.New("too many active full-mode sessions")
+	}
 	r.fullModeSessions[hash] = fullModeSession{expiresAt: now.Add(fullModeSessionTTL)}
-	r.fullModeMu.Unlock()
 	return base64.RawURLEncoding.EncodeToString(tokenBytes[:]), nil
 }
 

@@ -112,6 +112,19 @@ func TestFullModeSessionProtectsFullModeResources(t *testing.T) {
 	}
 }
 
+func TestFullModeSessionCreationIsBounded(t *testing.T) {
+	runtime := &pluginRuntime{}
+	defer runtime.shutdown()
+	for range maxFullModeSessions {
+		if _, err := runtime.createFullModeSession(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := runtime.createFullModeSession(); err == nil {
+		t.Fatal("session limit did not reject another active capability")
+	}
+}
+
 func TestResourceDataRoutesRequireAuthenticatedSession(t *testing.T) {
 	config := testConfig(t)
 	store, err := openStore(config)
