@@ -40,6 +40,7 @@ type pluginRuntime struct {
 	priceSyncMu       sync.Mutex
 	mu                sync.RWMutex
 	store             *Store
+	config            Config
 	crypto            cryptoContext
 	accountTracking   accountTrackingContext
 	apiKeyGeneration  uint64

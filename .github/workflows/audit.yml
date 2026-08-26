@@ -37,5 +37,5 @@ jobs:
           GOARCH: amd64
         run: |
           go build -buildmode=c-shared -trimpath -buildvcs=false \
-            -ldflags="-s -w -X main.version=2.0.3-audit.6" \
+            -ldflags="-s -w -X main.version=2.0.3-audit.10" \
             -o cap-token-usage-tracker-sizhe233.so .

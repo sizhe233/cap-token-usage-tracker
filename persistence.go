@@ -809,7 +809,7 @@ func (s *Store) run(actor *storeActor) {
 					item.resp <- resetResult{err: err}
 					continue
 				}
-				err := actor.reset()
+				err = actor.reset()
 				item.resp <- resetResult{generation: actor.activeGeneration, generations: cloneAPIKeyGenerations(actor.generations), err: err}
 			case configCommand:
 				if err := actor.retryFailedFlush(time.Now().UTC()); err != nil {
