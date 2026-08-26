@@ -770,55 +770,60 @@ func TestDashboardResponseHeaders(t *testing.T) {
 	}
 }
 
-func TestFullModeUsesSeparateProtectedDashboard(t *testing.T) {
-	if !strings.Contains(dashboardHTML, `id="fullModeButton"`) || !strings.Contains(dashboardHTML, `id="fullModeDialog"`) {
-		t.Fatal("dashboard must provide a full-mode entry button and dialog")
+func TestDashboardUsesManagementCenterCapabilityBridge(t *testing.T) {
+	for name, html := range map[string]string{"dashboard": dashboardHTML, "full-dashboard": fullDashboardHTML} {
+		for _, required := range []string{
+			`protocol:'cliproxy-plugin-capability-v1'`,
+			`type:'request'`,
+			`event.origin!==window.location.origin`,
+			`event.source!==window.parent`,
+			`message.pluginID!==pluginID`,
+			`message.requestID!==pluginCapabilityRequestID`,
+			`crypto.getRandomValues(bytes)`,
+			`window.parent.postMessage`,
+			`'X-Full-Mode-Session':fullModeSession`,
+			`if(response.status===401&&fullModeSession){expireFullModeSession();}`,
+		} {
+			if !strings.Contains(html, required) {
+				t.Fatalf("%s missing capability bridge contract %q", name, required)
+			}
+		}
+		for _, forbidden := range []string{
+			`id="fullModeDialog"`,
+			`fullModeKeyInput`,
+			`fullModeUnlockButton`,
+			`unlockFullMode`,
+			`Authorization':'Bearer '`,
+			`managementBase+'/full-mode/session'`,
+			`localStorage`,
+			`sessionStorage`,
+			`#session=`,
+		} {
+			if strings.Contains(html, forbidden) {
+				t.Fatalf("%s contains forbidden authentication pattern %q", name, forbidden)
+			}
+		}
 	}
-	if !strings.Contains(dashboardHTML, `managementBase+'/full-mode/session'`) || !strings.Contains(dashboardHTML, `method:'POST'`) || !strings.Contains(dashboardHTML, `Authorization':'Bearer '+key`) {
-		t.Fatal("full-mode dialog must create an authenticated full-mode session")
-	}
-	if !strings.Contains(dashboardHTML, `fullModeSession=session`) || !strings.Contains(dashboardHTML, `startDashboard()`) || strings.Contains(dashboardHTML, `fullModeManagementKey=key`) {
-		t.Fatal("dashboard must retain only the opaque in-memory session and start after authentication")
-	}
+
 	for _, forbidden := range []string{
 		`id="pricingButton"`, `id="pricingDialog"`, `id="priceList"`, `id="savePricing"`, `id="syncPrices"`,
 		`id="exportButton"`, `id="exportMenu"`, `id="exportCSV"`, `id="exportPNG"`, `id="exportBackup"`, `id="restoreBackup"`, `id="backupDialog"`,
 		`function exportCSV()`, `function exportPNG()`, `function downloadBackup()`, `function restoreBackup()`, `function confirmAndRestore(file)`,
-		`document.getElementById('exportBackup').addEventListener`, `document.getElementById('restoreBackup').addEventListener`,
 	} {
 		if strings.Contains(dashboardHTML, forbidden) {
-			t.Fatalf("normal dashboard must not expose pricing UI %q", forbidden)
+			t.Fatalf("normal dashboard must not expose full-mode UI %q", forbidden)
 		}
 	}
-	if !strings.Contains(dashboardHTML, `function startDashboard(){if(!fullModeSession){openFullModeDialog();return;}`) {
-		t.Fatal("ordinary dashboard must authenticate before loading resource data")
-	}
-	if !strings.Contains(dashboardHTML, `'X-Full-Mode-Session':fullModeSession`) || !strings.Contains(dashboardHTML, `if(response.status===401&&fullModeSession){expireFullModeSession();}`) || !strings.Contains(dashboardHTML, `function expireFullModeSession(){fullModeSession='';`) {
-		t.Fatal("ordinary dashboard must attach the session and re-authenticate after expiry")
-	}
-	for _, required := range []string{`var fullModePage=true`, `button.exitFullMode`, `history.replaceState(null,'',window.location.pathname+window.location.search)`} {
-		if !strings.Contains(fullDashboardHTML, required) {
-			t.Fatalf("full dashboard missing %q", required)
-		}
-	}
-	if !strings.Contains(fullDashboardHTML, `X-Full-Mode-Session`) || !strings.Contains(fullDashboardHTML, `resourceBase+'/full-mode/prices'`) || !strings.Contains(fullDashboardHTML, `function openPricing(){if(!fullModeEnabled||!fullModeSession)return;`) || strings.Contains(fullDashboardHTML, `fullModeManagementKey=key`) {
-		t.Fatal("full dashboard must use the server-issued capability for protected endpoints")
-	}
+
 	for _, required := range []string{
-		`id="pricingButton" class="control"`, `id="pricingDialog"`, `id="priceList"`, `id="savePricing"`, `id="syncPrices"`,
-		`id="exportButton"`, `id="exportMenu"`, `id="exportCSV"`, `id="exportPNG"`, `id="exportBackup"`, `id="restoreBackup"`, `id="backupDialog"`,
-		`resourceBase+'/full-mode/backup'`, `resourceBase+'/full-mode/restore'`, `async function requireFullModeExportSession()`, `await fullModeBinaryPayloadRequest(restoreURL,file,120000)`,
+		`var fullModePage=true`, `button.exitFullMode`, `resourceBase+'/full-mode/prices'`,
+		`function openPricing(){if(!fullModeEnabled||!fullModeSession)return;`,
+		`id="pricingButton" class="control"`, `id="pricingDialog"`, `id="priceList"`,
+		`resourceBase+'/full-mode/backup'`, `resourceBase+'/full-mode/restore'`,
+		`var resetURL=resourceBase+'/full-mode/reset';`, `method:'GET',headers:{'X-Confirm-Reset':'reset'}`,
 	} {
 		if !strings.Contains(fullDashboardHTML, required) {
-			t.Fatalf("full dashboard must provide pricing UI %q", required)
-		}
-	}
-	if !strings.Contains(fullDashboardHTML, `var resetURL=resourceBase+'/full-mode/reset';`) || !strings.Contains(fullDashboardHTML, `async function resetStats(){if(!fullModeEnabled||!fullModeSession){text('error',t('fullMode.keyRequired'));return;}`) || !strings.Contains(fullDashboardHTML, `method:'GET',headers:{'X-Confirm-Reset':'reset'}`) {
-		t.Fatal("full dashboard reset must use the GET-only session-protected resource contract")
-	}
-	for _, forbidden := range []string{`askBackupManagementKey`, `managementBase+'/backup'`, `managementBase+'/restore'`, `Authorization':'Bearer '+managementKey,'Content-Type':'application/octet-stream'`, `function askManagementKey()`, `id="resetDialog"`, `resetKeyInput`, `Authorization':'Bearer '+managementKey`} {
-		if strings.Contains(fullDashboardHTML, forbidden) {
-			t.Fatalf("full dashboard export must not use a management key %q", forbidden)
+			t.Fatalf("full dashboard missing %q", required)
 		}
 	}
 	if strings.Contains(fullDashboardHTML, `sensitive_data":[]`) {

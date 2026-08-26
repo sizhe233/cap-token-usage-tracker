@@ -11,8 +11,8 @@ This fork is pinned to the audited upstream baseline `v2.0.3` (`4bcf440844bbfef4
   - every `/full-mode/*` route except the static `/full-dashboard` shell
 - Session issuance must remain under authenticated CPA Management API:
   `POST /v0/management/plugins/<id>/full-mode/session`.
-- The dashboard must not fetch statistics before Management authentication succeeds.
-- The CPA management key must never be stored in browser storage or plugin storage.
+- The dashboard must not fetch statistics before the authenticated Management Center delegates a plugin-scoped capability through the versioned postMessage bridge.
+- The CPA management key must never enter plugin DOM, JavaScript, messages, browser storage, or plugin storage. The Management Center holds it and sends only a plugin-scoped capability.
 - Full-mode sessions remain random, in-memory, revocable, and no longer than five minutes.
 
 ## Data minimization

@@ -38,7 +38,7 @@ CAP Token Usage Tracker 是 CLIProxyAPI 的持久化 Token 用量统计插件。
 /v0/resource/plugins/cap-token-usage-tracker-sizhe233/dashboard
 ```
 
-该路径只公开静态 HTML 页面壳，不包含统计数据。打开页面后必须输入 CLIProxyAPI 管理密钥；管理接口鉴权成功后，插件签发一个随机、有效期 5 分钟、仅保存在内存中的会话令牌，页面才开始读取概览、趋势、费用估算、维度统计和逐请求元数据。筛选、时间范围、刷新、表格分页、排序和列设置等日常查看功能保持不变。
+该路径只公开静态 HTML 页面壳，不包含统计数据。页面必须从已登录的审计版 CLIProxyAPI Management Center 打开：管理中心通过已认证 Management API 签发随机、有效期 5 分钟的插件专用会话，并以严格校验的 `postMessage` 传给沙箱 iframe；CAP 永远看不到管理密钥。会话到期后会自动重新委托，无需再次输入管理密钥。直接打开资源 URL 不会加载数据。
 
 仪表盘会优先请求紧凑的首屏统计并立即渲染摘要、模型汇总和聚合趋势；逐模型趋势、维度表、逐请求明细、价格和费用随后异步加载。首屏的 `24h` 趋势按 5 分钟桶聚合，`7d` 按小时桶聚合；更长或自定义范围会自动选择足以控制点数的更粗粒度。
 
@@ -48,7 +48,7 @@ CAP Token Usage Tracker 是 CLIProxyAPI 的持久化 Token 用量统计插件。
 - CSV 和 Dashboard PNG 导出
 - 数据库备份与恢复
 
-普通页面鉴权后仍停留在 `/dashboard`。顶部按钮可进入独立的完整模式兼容页面：
+管理中心委托成功后，普通页面仍停留在 `/dashboard`。顶部按钮可进入独立的完整模式页面：
 
 ```text
 /v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-dashboard
@@ -64,7 +64,7 @@ CAP Token Usage Tracker 是 CLIProxyAPI 的持久化 Token 用量统计插件。
 - bbolt 数据库备份与恢复
 - API Key 明文查看、筛选、标签管理和密钥安全状态提示
 
-会话有效期为 5 分钟。所有资源数据接口均要求通过 `X-Full-Mode-Session` 请求头发送令牌；令牌不写入数据库，退出时会主动撤销。普通仪表盘只在内存中保留令牌。`/full-dashboard` 兼容页面仍可用 URL fragment 临时接收令牌，并在初始化后立即从地址栏清除。管理密钥不作为后续操作的鉴权凭据保存。
+会话有效期为 5 分钟。所有资源数据接口均要求通过 `X-Full-Mode-Session` 请求头发送令牌；令牌不写入数据库，退出时会主动撤销，页面只在内存中保留令牌。普通模式和完整模式都通过管理中心能力桥接自动获取或续签。管理密钥始终只由管理中心持有，不进入插件 DOM、脚本或存储。
 
 完整模式 HTML 本身不嵌入受保护数据。API Key 明文、标签和密钥安全状态由带 `X-Full-Mode-Session` 鉴权的资源接口按需返回，不能写进普通模式 HTML、普通资源响应或前端静态脚本。仅通过 CSS 隐藏元素不能保护敏感数据。
 
@@ -344,13 +344,13 @@ Normal mode is the default Management Center page:
 /v0/resource/plugins/cap-token-usage-tracker-sizhe233/dashboard
 ```
 
-This path exposes only a static HTML shell and contains no statistics. After it opens, the user must enter the CLIProxyAPI management key. Only after Management API authentication succeeds does the plugin issue a random five-minute in-memory session and begin loading summaries, trends, costs, grouped dimensions, and per-request metadata. Filters, date ranges, refresh, pagination, sorting, and column settings remain available.
+This path exposes only a static HTML shell and contains no statistics. It must be opened by the authenticated audited CLIProxyAPI Management Center. The center issues a random five-minute plugin-scoped session through the authenticated Management API and passes it to the sandboxed iframe through a strictly validated `postMessage`; CAP never receives the management key. Expired sessions are delegated again automatically. Direct resource-URL navigation does not load data.
 
 The dashboard requests compact first-screen statistics and renders the summary, model totals, and aggregate trend first. Per-model trends, grouped dimensions, request details, prices, and costs load asynchronously afterwards. The first-screen trend uses five-minute buckets for `24h`, hourly buckets for `7d`, and automatically chooses coarser buckets for longer or custom ranges to keep the point count bounded.
 
 Normal mode does not expose model-price configuration, models.dev synchronization, CSV or Dashboard PNG export, or database backup and restore.
 
-After authentication, the ordinary dashboard remains at `/dashboard`. Its top button can enter the separate compatibility page:
+After capability delegation, the ordinary dashboard remains at `/dashboard`. Its top button can enter the separate full-mode page:
 
 ```text
 /v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-dashboard
@@ -365,7 +365,7 @@ Full mode keeps the same dashboard layout and statistics while adding:
 - bbolt database backup and restore
 - API-key reveal, filtering, label management, and secret-security status
 
-The session lasts 5 minutes. Every resource-data endpoint requires the capability in `X-Full-Mode-Session`; it is never persisted to the database and is revoked on exit. The ordinary dashboard keeps it only in memory. The `/full-dashboard` compatibility page may still receive it temporarily through the URL fragment and removes the fragment immediately during initialization. The management key is not retained for later operations.
+The session lasts 5 minutes. Every resource-data endpoint requires the capability in `X-Full-Mode-Session`; it is never persisted to the database, is revoked on exit, and is kept only in page memory. Normal and full modes obtain or renew it through the Management Center capability bridge. The management key stays exclusively in the Management Center and never enters plugin DOM, scripts, or storage.
 
 The full-mode HTML does not embed protected data. API-key plaintext, labels, and secret-security status are returned on demand only by capability-protected resource endpoints. They are not included in normal-mode HTML, normal resource responses, or static frontend scripts. CSS visibility is not a security boundary.
 
