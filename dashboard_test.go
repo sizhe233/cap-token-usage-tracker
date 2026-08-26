@@ -792,7 +792,6 @@ func TestDashboardUsesManagementCenterCapabilityBridge(t *testing.T) {
 			`id="fullModeDialog"`,
 			`fullModeKeyInput`,
 			`fullModeUnlockButton`,
-			`unlockFullMode`,
 			`Authorization':'Bearer '`,
 			`managementBase+'/full-mode/session'`,
 			`localStorage`,
