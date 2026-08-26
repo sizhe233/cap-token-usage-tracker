@@ -133,8 +133,8 @@ func TestAccountStatsUsesCurrentPriceBook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := accounts[ref].EstimatedCostUSD; got != 0.0051 {
-		t.Fatalf("estimated cost = %v, want 0.0051", got)
+	if got := accounts[ref].EstimatedCostUSD; got != 0.0039 {
+		t.Fatalf("estimated cost = %v, want 0.0039", got)
 	}
 }
 

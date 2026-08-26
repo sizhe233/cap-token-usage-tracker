@@ -210,8 +210,12 @@ func (r *pluginRuntime) dispatchManagement(request pluginapi.ManagementRequest, 
 	if protectedResourceDataPath(request.Path, routes) && !r.validFullModeSession(fullModeSessionFromRequest(request)) {
 		return jsonResponse(http.StatusUnauthorized, map[string]string{"error": "resource data requires an authenticated session"}), nil
 	}
-
 	switch request.Path {
+	case routes.fullModeSessionPath:
+		if !strings.EqualFold(request.Method, http.MethodPost) {
+			return methodNotAllowed(http.MethodPost), nil
+		}
+		return r.fullModeSessionResponse()
 	case routes.accountStatsPath:
 		if !strings.EqualFold(request.Method, http.MethodPost) {
 			return methodNotAllowed(http.MethodPost), nil
