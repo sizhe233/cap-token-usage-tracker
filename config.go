@@ -25,6 +25,7 @@ type Config struct {
 	FlushMaxRecords             int
 	SyncOnRecord                bool
 	APIKeySecret                string
+	AccountTrackingSecret       string
 	ResponseCompression         bool
 	ResponseCompressionMinBytes int
 }
@@ -36,6 +37,7 @@ type configYAML struct {
 	FlushMaxRecords             *int    `yaml:"flush_max_records"`
 	SyncOnRecord                *bool   `yaml:"sync_on_record"`
 	APIKeySecret                *string `yaml:"api_key_secret"`
+	AccountTrackingSecret       *string `yaml:"account_tracking_secret"`
 	ResponseCompression         *bool   `yaml:"response_compression"`
 	ResponseCompressionMinBytes *int    `yaml:"response_compression_min_bytes"`
 }
@@ -85,6 +87,9 @@ func parseConfig(raw []byte) (Config, error) {
 	if input.APIKeySecret != nil {
 		cfg.APIKeySecret = *input.APIKeySecret
 	}
+	if input.AccountTrackingSecret != nil {
+		cfg.AccountTrackingSecret = *input.AccountTrackingSecret
+	}
 	if input.ResponseCompression != nil {
 		cfg.ResponseCompression = *input.ResponseCompression
 	}
@@ -109,6 +114,9 @@ func normalizeConfig(cfg Config) (Config, error) {
 	}
 	if cfg.APIKeySecret != "" && len([]byte(cfg.APIKeySecret)) < 32 {
 		return Config{}, fmt.Errorf("api_key_secret must be empty or at least 32 bytes")
+	}
+	if cfg.AccountTrackingSecret != "" && len([]byte(cfg.AccountTrackingSecret)) < 32 {
+		return Config{}, fmt.Errorf("account_tracking_secret must be empty or at least 32 bytes")
 	}
 	if cfg.ResponseCompressionMinBytes < 0 || cfg.ResponseCompressionMinBytes > maxResponseCompressionMinBytes {
 		return Config{}, fmt.Errorf("response_compression_min_bytes must be between 0 and %d", maxResponseCompressionMinBytes)

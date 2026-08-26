@@ -25,6 +25,7 @@ type managementRegistrationResponse struct {
 
 type registeredRoutes struct {
 	pluginID                  string
+	accountStatsPath          string
 	statsPath                 string
 	resetPath                 string
 	backupPath                string
@@ -63,9 +64,9 @@ func (r *pluginRuntime) registerManagement(raw []byte) (managementRegistrationRe
 	if err != nil {
 		return managementRegistrationResponse{}, err
 	}
-
 	routes := registeredRoutes{
 		pluginID:                  pluginID,
+		accountStatsPath:          "/v0/management/plugins/" + pluginID + "/account-stats",
 		statsPath:                 "/v0/management/plugins/" + pluginID + "/stats",
 		resetPath:                 "/v0/management/plugins/" + pluginID + "/reset",
 		backupPath:                "/v0/management/plugins/" + pluginID + "/backup",
@@ -104,6 +105,11 @@ func (r *pluginRuntime) registerManagement(raw []byte) (managementRegistrationRe
 				Method:      http.MethodPost,
 				Path:        "/plugins/" + pluginID + "/full-mode/session",
 				Description: "Issue a short-lived capability for the separate full-mode dashboard.",
+			},
+			{
+				Method:      http.MethodPost,
+				Path:        "/plugins/" + pluginID + "/account-stats",
+				Description: "Read privacy-preserving account-level usage summaries for supplied auth indexes.",
 			},
 			{
 				Method:      http.MethodGet,
@@ -206,11 +212,11 @@ func (r *pluginRuntime) dispatchManagement(request pluginapi.ManagementRequest, 
 	}
 
 	switch request.Path {
-	case routes.fullModeSessionPath:
+	case routes.accountStatsPath:
 		if !strings.EqualFold(request.Method, http.MethodPost) {
 			return methodNotAllowed(http.MethodPost), nil
 		}
-		return r.fullModeSessionResponse()
+		return r.accountStatsResponse(request)
 	case routes.dashboardPath:
 		if request.Method != "" && !strings.EqualFold(request.Method, http.MethodGet) {
 			return methodNotAllowed(http.MethodGet), nil
@@ -353,6 +359,48 @@ func (r *pluginRuntime) dispatchManagement(request pluginapi.ManagementRequest, 
 	default:
 		return jsonResponse(http.StatusNotFound, map[string]any{"error": "route not found"}), nil
 	}
+}
+
+func (r *pluginRuntime) accountStatsResponse(request pluginapi.ManagementRequest) (pluginapi.ManagementResponse, error) {
+	contentType, _, err := mime.ParseMediaType(request.Headers.Get("Content-Type"))
+	if err != nil || !strings.EqualFold(contentType, "application/json") {
+		return jsonResponse(http.StatusUnsupportedMediaType, map[string]any{"error": "Content-Type must be application/json"}), nil
+	}
+	if len(request.Body) > 64<<10 {
+		return jsonResponse(http.StatusRequestEntityTooLarge, map[string]any{"error": "account statistics request is too large"}), nil
+	}
+	var input struct {
+		AuthIndexes []string `json:"auth_indexes"`
+		Range       string   `json:"range"`
+	}
+	if err := decodeStrictJSON(request.Body, &input); err != nil {
+		return jsonResponse(http.StatusBadRequest, map[string]any{"error": "invalid account statistics JSON"}), nil
+	}
+	if len(input.AuthIndexes) > 100 {
+		return jsonResponse(http.StatusBadRequest, map[string]any{"error": "at most 100 auth indexes may be requested"}), nil
+	}
+	r.mu.RLock()
+	store := r.store
+	tracking := r.accountTracking
+	r.mu.RUnlock()
+	if store == nil {
+		return jsonResponse(http.StatusServiceUnavailable, map[string]any{"error": "storage is not initialized"}), nil
+	}
+	queryRange, err := presetUsageRange(input.Range, nowUTC())
+	if err != nil {
+		return jsonResponse(errorHTTPStatus(err), map[string]any{"error": err.Error()}), nil
+	}
+	refs := make(map[string]struct{}, len(input.AuthIndexes))
+	for _, authIndex := range input.AuthIndexes {
+		if ref := accountReference(authIndex, tracking); ref != "" {
+			refs[ref] = struct{}{}
+		}
+	}
+	accounts, err := store.queryAccountStats(queryRange, refs)
+	if err != nil {
+		return jsonResponse(errorHTTPStatus(err), map[string]any{"error": err.Error()}), nil
+	}
+	return jsonResponse(http.StatusOK, AccountStatsResponse{SchemaVersion: 1, Range: queryRange.Name, GeneratedAt: nowUTC(), Accounts: accounts}), nil
 }
 
 func (r *pluginRuntime) statsResponse(request pluginapi.ManagementRequest) (pluginapi.ManagementResponse, error) {

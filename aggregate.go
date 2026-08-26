@@ -15,6 +15,7 @@ type Dimensions struct {
 	Model            string `json:"model"`
 	Alias            string `json:"alias"`
 	Source           string `json:"source"`
+	AccountRef       string `json:"account_ref,omitempty"`
 	APIKey           string `json:"api_key,omitempty"`
 	APIKeyHash       string `json:"api_key_hash,omitempty"`
 	APIKeyGeneration uint64 `json:"api_key_generation,omitempty"`
@@ -25,6 +26,52 @@ type Dimensions struct {
 	ReasoningEffort  string `json:"reasoning_effort"`
 	Failed           bool   `json:"failed"`
 	FailureStatus    int    `json:"failure_status"`
+}
+
+type AccountUsageSummary struct {
+	Requests            uint64    `json:"requests"`
+	FailedRequests      uint64    `json:"failed_requests"`
+	InputTokens         uint64    `json:"input_tokens"`
+	OutputTokens        uint64    `json:"output_tokens"`
+	ReasoningTokens     uint64    `json:"reasoning_tokens"`
+	CachedTokens        uint64    `json:"cached_tokens"`
+	CacheReadTokens     uint64    `json:"cache_read_tokens"`
+	CacheCreationTokens uint64    `json:"cache_creation_tokens"`
+	TotalTokens         uint64    `json:"total_tokens"`
+	TotalLatencyNS      uint64    `json:"total_latency_ns"`
+	TotalTTFTNS         uint64    `json:"total_ttft_ns"`
+	LatencySamples      uint64    `json:"latency_samples"`
+	TTFTSamples         uint64    `json:"ttft_samples"`
+	EstimatedCostUSD    float64   `json:"estimated_cost_usd"`
+	LastUsed            time.Time `json:"last_used"`
+}
+
+type AccountStatsResponse struct {
+	SchemaVersion uint32                         `json:"schema_version"`
+	Range         string                         `json:"range"`
+	GeneratedAt   time.Time                      `json:"generated_at"`
+	Accounts      map[string]AccountUsageSummary `json:"accounts"`
+}
+
+func (s AccountUsageSummary) add(counters Counters, cost float64, requestedAt time.Time) AccountUsageSummary {
+	s.Requests = saturatingAdd(s.Requests, counters.Requests)
+	s.FailedRequests = saturatingAdd(s.FailedRequests, counters.FailedRequests)
+	s.InputTokens = saturatingAdd(s.InputTokens, counters.InputTokens)
+	s.OutputTokens = saturatingAdd(s.OutputTokens, counters.OutputTokens)
+	s.ReasoningTokens = saturatingAdd(s.ReasoningTokens, counters.ReasoningTokens)
+	s.CachedTokens = saturatingAdd(s.CachedTokens, counters.CachedTokens)
+	s.CacheReadTokens = saturatingAdd(s.CacheReadTokens, counters.CacheReadTokens)
+	s.CacheCreationTokens = saturatingAdd(s.CacheCreationTokens, counters.CacheCreationTokens)
+	s.TotalTokens = saturatingAdd(s.TotalTokens, counters.TotalTokens)
+	s.TotalLatencyNS = saturatingAdd(s.TotalLatencyNS, counters.TotalLatencyNS)
+	s.TotalTTFTNS = saturatingAdd(s.TotalTTFTNS, counters.TotalTTFTNS)
+	s.LatencySamples = saturatingAdd(s.LatencySamples, counters.LatencySamples)
+	s.TTFTSamples = saturatingAdd(s.TTFTSamples, counters.TTFTSamples)
+	s.EstimatedCostUSD += cost
+	if requestedAt.After(s.LastUsed) {
+		s.LastUsed = requestedAt
+	}
+	return s
 }
 
 // usageFilter scopes every analytics surface to the same persisted dimensions.

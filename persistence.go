@@ -83,6 +83,17 @@ type requestQueryCommand struct {
 	resp       chan requestQueryResult
 }
 
+type accountStatsCommand struct {
+	queryRange  usageRange
+	accountRefs map[string]struct{}
+	resp        chan accountStatsResult
+}
+
+type accountStatsResult struct {
+	accounts map[string]AccountUsageSummary
+	err      error
+}
+
 type requestQueryResult struct {
 	page RequestPage
 	err  error
@@ -369,6 +380,62 @@ func (s *Store) queryRequestPage(queryRange usageRange, offset, limit int, model
 	return s.queryRequestPageByFilter(queryRange, offset, limit, model, usageFilter{}, "")
 }
 
+func (s *Store) queryAccountStats(queryRange usageRange, accountRefs map[string]struct{}) (map[string]AccountUsageSummary, error) {
+	resp := make(chan accountStatsResult, 1)
+	if err := s.send(accountStatsCommand{queryRange: queryRange, accountRefs: accountRefs, resp: resp}); err != nil {
+		return nil, err
+	}
+	result := <-resp
+	return result.accounts, result.err
+}
+
+func (a *storeActor) queryAccountStats(queryRange usageRange, accountRefs map[string]struct{}, now time.Time) (map[string]AccountUsageSummary, error) {
+	if err := queryRange.validate(); err != nil {
+		return nil, withStatus(400, "%v", err)
+	}
+	accounts := make(map[string]AccountUsageSummary)
+	resolver := newModelPriceResolver(a.modelPrices, a.priceSyncSettings)
+	err := a.db.View(func(tx *bolt.Tx) error {
+		requests := tx.Bucket(requestsBucket)
+		if requests == nil {
+			return errors.New("requests bucket is missing")
+		}
+		cursor := requests.Cursor()
+		for key, value := cursor.First(); key != nil; key, value = cursor.Next() {
+			if len(key) != 16 || value == nil {
+				continue
+			}
+			requestedAt := time.Unix(0, decodeInt64(key[:8])).UTC()
+			if !queryRange.Start.IsZero() && requestedAt.Before(queryRange.Start) {
+				continue
+			}
+			if !queryRange.End.IsZero() && !requestedAt.Before(queryRange.End) {
+				break
+			}
+			var request RequestDetail
+			if err := json.Unmarshal(value, &request); err != nil {
+				return fmt.Errorf("decode request detail: %w", err)
+			}
+			ref := request.AccountRef
+			if !validAccountReference(ref) {
+				continue
+			}
+			if len(accountRefs) > 0 {
+				if _, ok := accountRefs[ref]; !ok {
+					continue
+				}
+			}
+			cost := estimateRequestCostWithResolver(request, resolver)
+			current := accounts[ref]
+			accounts[ref] = current.add(request.Counters, cost.TotalUSD, requestedAt)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query account statistics: %w", err)
+	}
+	return accounts, nil
+}
 func (s *Store) queryRequestPageBySource(queryRange usageRange, offset, limit int, model, source, resultFilter string) (RequestPage, error) {
 	return s.queryRequestPageByFilter(queryRange, offset, limit, model, newUsageFilter(source, ""), resultFilter)
 }
@@ -728,7 +795,15 @@ func (s *Store) run(actor *storeActor) {
 					Generation:    actor.costGeneration,
 					Filter:        item.filter,
 				}, err: err}
-			case resetCommand:
+			case accountStatsCommand:
+				now := time.Now().UTC()
+				if err := actor.flush(now, true); err != nil {
+					actor.lastFlushErr = err
+					item.resp <- accountStatsResult{err: err}
+					continue
+				}
+				accounts, err := actor.queryAccountStats(item.queryRange, item.accountRefs, now)
+				item.resp <- accountStatsResult{accounts: accounts, err: err}
 				if err := actor.retryFailedFlush(time.Now().UTC()); err != nil {
 					item.resp <- resetResult{err: err}
 					continue

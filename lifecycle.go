@@ -40,8 +40,8 @@ type pluginRuntime struct {
 	priceSyncMu       sync.Mutex
 	mu                sync.RWMutex
 	store             *Store
-	config            Config
 	crypto            cryptoContext
+	accountTracking   accountTrackingContext
 	apiKeyGeneration  uint64
 	apiKeyGenerations map[uint64]APIKeyCryptoGeneration
 	routes            registeredRoutes
@@ -99,6 +99,10 @@ func (r *pluginRuntime) applyConfig(config Config) error {
 	if err != nil {
 		return err
 	}
+	accountTracking, err := deriveAccountTrackingContext(config.AccountTrackingSecret)
+	if err != nil {
+		return err
+	}
 	r.mu.RLock()
 	current := r.store
 	currentConfig := r.config
@@ -116,6 +120,7 @@ func (r *pluginRuntime) applyConfig(config Config) error {
 		generation, generations := current.APIKeyCryptoState()
 		r.config = config
 		r.crypto = crypto
+		r.accountTracking = accountTracking
 		r.apiKeyGeneration = generation
 		r.apiKeyGenerations = generations
 		return nil
@@ -130,8 +135,8 @@ func (r *pluginRuntime) applyConfig(config Config) error {
 	r.store = next
 	r.config = config
 	r.crypto = crypto
+	r.accountTracking = accountTracking
 	r.apiKeyGeneration, r.apiKeyGenerations = next.APIKeyCryptoState()
-	r.mu.Unlock()
 	r.fullModeMu.Lock()
 	r.fullModeSessions = nil
 	r.fullModeUploads = nil
@@ -154,6 +159,9 @@ func (r *pluginRuntime) handleUsage(raw []byte) (map[string]any, error) {
 	if r.store == nil {
 		return nil, withStatus(503, "plugin storage is not initialized")
 	}
+	accountRef := accountReference(usage.authIndex, r.accountTracking)
+	usage.authIndex = ""
+	usage.Dimensions.AccountRef = accountRef
 	crypto := r.crypto
 	generation := r.apiKeyGeneration
 	if generation == 0 && crypto.enabled {
@@ -177,7 +185,6 @@ func (r *pluginRuntime) handleUsage(raw []byte) (map[string]any, error) {
 		usage.Dimensions.APIKey = ""
 		usage.Dimensions.APIKeyHash = ""
 		usage.Dimensions.APIKeyGeneration = 0
-		usage.Dimensions.APIKeyStatus = ""
 		if crypto.enabled {
 			usage.Dimensions.APIKeyStatus = apiKeyStatusSourceMissing
 		}
@@ -202,7 +209,8 @@ func (r *pluginRuntime) shutdown() error {
 	r.routes = registeredRoutes{}
 	r.exchangeRates = nil
 	r.authResolver = nil
-	r.mu.Unlock()
+	r.crypto = cryptoContext{}
+	r.accountTracking = accountTrackingContext{}
 	r.fullModeMu.Lock()
 	r.fullModeSessions = nil
 	r.fullModeUploads = nil
@@ -271,7 +279,7 @@ func pluginRegistration(schemaVersion uint32) registration {
 				{Name: "flush_interval", Type: pluginapi.ConfigFieldTypeString, Description: "Maximum delay before batched statistics are flushed, for example 5s."},
 				{Name: "flush_max_records", Type: pluginapi.ConfigFieldTypeInteger, Description: "Flush after this many accepted usage records."},
 				{Name: "sync_on_record", Type: pluginapi.ConfigFieldTypeBoolean, Description: "Commit every usage record before acknowledging it."},
-				{Name: "api_key_secret", Type: pluginapi.ConfigFieldTypeString, Description: "Secret for API-key encryption and keyed fingerprints. Empty by default, which disables API-key tracking; set an explicit value of at least 32 bytes to enable tracking. Changing the value starts a new crypto generation while preserving historical records."},
+				{Name: "account_tracking_secret", Type: pluginapi.ConfigFieldTypeString, Description: "Dedicated HMAC secret for opaque account-level usage references. Empty by default; set at least 32 bytes to enable account attribution. Never stores raw auth indexes, IDs, emails, labels, or credential JSON."},
 				{Name: "response_compression", Type: pluginapi.ConfigFieldTypeBoolean, Description: "Compress eligible public dashboard HTML and JSON responses with gzip when supported by the client. Defaults to true."},
 				{Name: "response_compression_min_bytes", Type: pluginapi.ConfigFieldTypeInteger, Description: "Minimum eligible public response size in bytes before gzip compression. Defaults to 1024; range 0-16777216."},
 			},
