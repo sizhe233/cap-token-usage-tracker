@@ -138,6 +138,7 @@ func (r *pluginRuntime) applyConfig(config Config) error {
 	r.crypto = crypto
 	r.accountTracking = accountTracking
 	r.apiKeyGeneration, r.apiKeyGenerations = next.APIKeyCryptoState()
+	r.mu.Unlock()
 	r.fullModeMu.Lock()
 	r.fullModeSessions = nil
 	r.fullModeUploads = nil
