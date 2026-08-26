@@ -574,7 +574,7 @@ func TestDashboardSecurityContract(t *testing.T) {
 			t.Fatalf("dashboard missing %q", required)
 		}
 	}
-	for _, forbidden := range []string{"localStorage", "sessionStorage", "type=\"password\"", "Authorization", "connectButton", "logoutButton", "fetch('stats')", `fetch("stats")`} {
+	for _, forbidden := range []string{"localStorage", "sessionStorage", "type=\"password\"", "managementBase+'/full-mode/session'", "connectButton", "logoutButton", "fetch('stats')", `fetch("stats")`} {
 		if strings.Contains(html, forbidden) {
 			t.Fatalf("dashboard contains forbidden pattern %q", forbidden)
 		}

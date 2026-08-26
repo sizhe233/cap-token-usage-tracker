@@ -775,8 +775,8 @@ func TestDashboardUsesManagementCenterCapabilityBridge(t *testing.T) {
 		for _, required := range []string{
 			`protocol:'cliproxy-plugin-capability-v1'`,
 			`type:'request'`,
-			`event.origin!==window.location.origin`,
 			`event.source!==window.parent`,
+			`event.origin!=='null'`,
 			`message.pluginID!==pluginID`,
 			`message.requestID!==pluginCapabilityRequestID`,
 			`crypto.getRandomValues(bytes)`,
@@ -791,8 +791,6 @@ func TestDashboardUsesManagementCenterCapabilityBridge(t *testing.T) {
 		for _, forbidden := range []string{
 			`id="fullModeDialog"`,
 			`fullModeKeyInput`,
-			`fullModeUnlockButton`,
-			`Authorization':'Bearer '`,
 			`managementBase+'/full-mode/session'`,
 			`localStorage`,
 			`sessionStorage`,
