@@ -124,14 +124,22 @@ func TestAPIKeyTrackingRedactionRevealFilteringAndBackup(t *testing.T) {
 		runtime.routes.resourcePreferencesPath,
 		runtime.routes.resourceExchangeRatePath,
 	} {
-		query := url.Values{"range": {"24h"}}
+		query := url.Values{}
+		if path != runtime.routes.resourcePreferencesPath {
+			query.Set("range", "24h")
+		}
 		if path == runtime.routes.resourceStatsGroupsPath {
 			query.Set("offset", "0")
 			query.Set("limit", "100")
 		}
 		response := call(path, query, "")
-		if response.StatusCode != http.StatusUnauthorized {
-			t.Fatalf("unauthenticated resource %s status = %d body=%s", path, response.StatusCode, response.Body)
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("normal resource %s status = %d body=%s", path, response.StatusCode, response.Body)
+		}
+		for _, forbidden := range []string{keyA, keyB, `"api_key"`, `"api_key_hash"`, `"api_key_generation"`, `"api_key_ref"`, `"api_key_status"`, `"api_keys"`} {
+			if bytes.Contains(response.Body, []byte(forbidden)) {
+				t.Fatalf("normal resource %s leaked %q: %s", path, forbidden, response.Body)
+			}
 		}
 	}
 
@@ -199,9 +207,8 @@ func TestAPIKeyTrackingRedactionRevealFilteringAndBackup(t *testing.T) {
 	if filteredCosts.StatusCode != http.StatusOK || json.Unmarshal(filteredCosts.Body, &costs) != nil || costs.Summary.Requests != 2 {
 		t.Fatalf("filtered costs: status=%d body=%s", filteredCosts.StatusCode, filteredCosts.Body)
 	}
-
 	for _, path := range []string{runtime.routes.resourceStatsPath, runtime.routes.resourceStatsInitialPath, runtime.routes.resourceStatsTrendPath, runtime.routes.resourceStatsGroupsPath, runtime.routes.resourceRequestsPath, runtime.routes.resourceCostsPath} {
-		if response := call(path, filterQuery, ""); response.StatusCode != http.StatusUnauthorized {
+		if response := call(path, filterQuery, ""); response.StatusCode != http.StatusForbidden {
 			t.Fatalf("unauthenticated ref filter %s status = %d", path, response.StatusCode)
 		}
 		if response := call(path, url.Values{"range": {"24h"}, "api_key_ref": {"INVALID"}}, session); response.StatusCode != http.StatusBadRequest {

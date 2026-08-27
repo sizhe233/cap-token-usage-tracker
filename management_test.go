@@ -98,6 +98,17 @@ func TestAccountStatsManagementEndpoint(t *testing.T) {
 	if strings.Contains(string(response.Body), "account-one") {
 		t.Fatalf("raw auth index leaked: %s", response.Body)
 	}
+	sevenDayResponse := request(`{"auth_indexes":["account-one"],"range":"7d"}`, http.Header{"Content-Type": []string{"application/json"}})
+	if sevenDayResponse.StatusCode != http.StatusOK {
+		t.Fatalf("seven-day account stats status = %d body=%s", sevenDayResponse.StatusCode, sevenDayResponse.Body)
+	}
+	var sevenDayPayload AccountStatsResponse
+	if err := json.Unmarshal(sevenDayResponse.Body, &sevenDayPayload); err != nil {
+		t.Fatal(err)
+	}
+	if sevenDayPayload.Range != "7d" || sevenDayPayload.Accounts[ref].Requests != 1 {
+		t.Fatalf("seven-day account stats payload = %+v", sevenDayPayload)
+	}
 	if response := request(`{"auth_indexes":["account-one"],"range":"24h","extra":true}`, http.Header{"Content-Type": []string{"application/json"}}); response.StatusCode != http.StatusBadRequest {
 		t.Fatalf("unknown field status = %d body=%s", response.StatusCode, response.Body)
 	}

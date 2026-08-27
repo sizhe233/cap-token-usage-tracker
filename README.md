@@ -64,7 +64,7 @@ CAP Token Usage Tracker 是 CLIProxyAPI 的持久化 Token 用量统计插件。
 - bbolt 数据库备份与恢复
 - API Key 明文查看、筛选、标签管理和密钥安全状态提示
 
-会话有效期为 5 分钟。所有资源数据接口均要求通过 `X-Full-Mode-Session` 请求头发送令牌；令牌不写入数据库，退出时会主动撤销，页面只在内存中保留令牌。普通模式和完整模式都通过管理中心能力桥接自动获取或续签。管理密钥始终只由管理中心持有，不进入插件 DOM、脚本或存储。
+会话有效期为 5 分钟。完整模式数据、API Key 明文查看、筛选、标签、备份、恢复、价格写入和重置都要求通过 `X-Full-Mode-Session` 请求头发送有效令牌；令牌不写入数据库，退出时会主动撤销，页面只在内存中保留令牌。普通模式仅读取始终脱敏的资源数据，不需要插件会话，以兼容没有 capability bridge 的官方 Management Center。管理密钥始终只由管理中心持有，不进入插件 DOM、脚本或存储。
 
 完整模式 HTML 本身不嵌入受保护数据。API Key 明文、标签和密钥安全状态由带 `X-Full-Mode-Session` 鉴权的资源接口按需返回，不能写进普通模式 HTML、普通资源响应或前端静态脚本。仅通过 CSS 隐藏元素不能保护敏感数据。
 
@@ -96,7 +96,7 @@ CAP Token Usage Tracker 是 CLIProxyAPI 的持久化 Token 用量统计插件。
 
 更换 `api_key_secret` 不会删除数据库或历史统计，而是创建或激活对应的加密代际。当前密钥无法解密的旧代 API Key 显示“明文不可用”；切回对应旧密钥后可以再次读取。将 `api_key_secret` 设为空字符串会禁用 API Key 跟踪，之后收到的记录不会保存 API Key 密文或指纹。
 
-只有 `/dashboard` 和 `/full-dashboard` 两个静态 HTML 页面壳可以匿名访问。统计、逐请求、价格、偏好、汇率、费用、备份和设置数据都要求通过 Management 鉴权路由签发的 5 分钟会话。该能力边界不能替代 TLS、网络访问控制和宿主 Management API 安全配置。
+普通 `/dashboard` 壳和脱敏资源数据接口可以匿名访问；这些普通响应始终删除 `account_ref`、API Key 明文、引用、指纹、加密代际和状态。完整模式数据、API Key reveal/filter/label、备份、恢复、价格写入和重置仍要求通过 Management 鉴权路由签发的 5 分钟会话。该能力边界不能替代 TLS、网络访问控制和宿主 Management API 安全配置。
 
 ### 安装与配置
 
@@ -227,7 +227,21 @@ plugins:
 | `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/restore` | 分段上传并恢复数据库 |
 | `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/reset` | 校验会话和 `X-Confirm-Reset: reset` 后重置统计 |
 
-除 `/dashboard` 和 `/full-dashboard` 两个静态页面壳外，上述全部资源数据接口均要求：
+普通模式的 `/dashboard` 壳和下列脱敏资源读取接口不要求插件会话；`/preferences?save=1` 也允许保存仅包含分页、列可见性和时间范围的非敏感偏好：
+
+```text
+GET /stats
+GET /stats/initial
+GET /stats/trends
+GET /stats/groups
+GET /requests
+GET /costs
+GET /exchange-rate
+GET /prices
+GET /preferences
+```
+
+这些接口的普通响应不会包含 `account_ref` 或任何 API Key identity 字段。完整模式资源和 API Key 筛选仍要求：
 
 ```http
 X-Full-Mode-Session: <session-token>
@@ -347,7 +361,7 @@ Normal mode is the default Management Center page:
 /v0/resource/plugins/cap-token-usage-tracker-sizhe233/dashboard
 ```
 
-This path exposes only a static HTML shell and contains no statistics. It must be opened by the authenticated audited CLIProxyAPI Management Center. The center issues a random five-minute plugin-scoped session through the authenticated Management API and passes it to the sandboxed iframe through a strictly validated `postMessage`; CAP never receives the management key. Expired sessions are delegated again automatically. Direct resource-URL navigation does not load data.
+This path exposes only a static HTML shell and contains no statistics. It is compatible with the authenticated audited CLIProxyAPI Management Center and with direct loading of the normal redacted resource surface. The center may issue a random five-minute plugin-scoped session through the authenticated Management API and pass it to the sandboxed iframe through a strictly validated `postMessage`; CAP never receives the management key. Expired sessions are delegated again automatically for full mode. Direct normal resource loading never requires that bridge.
 
 The dashboard requests compact first-screen statistics and renders the summary, model totals, and aggregate trend first. Per-model trends, grouped dimensions, request details, prices, and costs load asynchronously afterwards. The first-screen trend uses five-minute buckets for `24h`, hourly buckets for `7d`, and automatically chooses coarser buckets for longer or custom ranges to keep the point count bounded.
 
@@ -368,13 +382,13 @@ Full mode keeps the same dashboard layout and statistics while adding:
 - bbolt database backup and restore
 - API-key reveal, filtering, label management, and secret-security status
 
-The session lasts 5 minutes. Every resource-data endpoint requires the capability in `X-Full-Mode-Session`; it is never persisted to the database, is revoked on exit, and is kept only in page memory. Normal and full modes obtain or renew it through the Management Center capability bridge. The management key stays exclusively in the Management Center and never enters plugin DOM, scripts, or storage.
+The session lasts 5 minutes. Full-mode data, API-key reveal/filter/label operations, backup, restore, price writes, and reset require the capability in `X-Full-Mode-Session`; it is never persisted to the database, is revoked on exit, and is kept only in page memory. Normal mode loads only redacted resource data and does not require a plugin session, so it remains compatible with Management Center releases that do not implement the capability bridge. The management key stays exclusively in the Management Center and never enters plugin DOM, scripts, or storage.
 
 The full-mode HTML does not embed protected data. API-key plaintext, labels, and secret-security status are returned on demand only by capability-protected resource endpoints. They are not included in normal-mode HTML, normal resource responses, or static frontend scripts. CSS visibility is not a security boundary.
 
 Normal and full modes share the same statistics source, but normal mode removes API-key plaintext, references, fingerprints, encryption generations, and reveal statuses. Full mode attempts item-by-item decryption with the configured `api_key_secret`; historical ciphertext that cannot be decrypted is shown as "Plaintext unavailable" without affecting other statistics.
 
-Like the legacy `/stats` resource, `/stats/initial` and `/stats/groups` apply redaction: normal-mode responses contain neither an API-key collection nor API-key fields in dimension rows. `/stats/trends` contains only timestamps, model names, and counters. Full mode accepts repeated `api_key_ref` values and filters by their union; omitting the parameter restores the full data set. The `api_key_ref` and compatible single-value `api_key_hash` filters require a valid `X-Full-Mode-Session` on every statistics, trend, group, request, and cost endpoint. Every resource-data request without that capability receives `401`; query parameters cannot bypass authorization.
+Like the legacy `/stats` resource, `/stats/initial` and `/stats/groups` apply redaction: normal-mode responses contain neither an API-key collection nor API-key fields in dimension rows. `/stats/trends` contains only timestamps, model names, and counters. Full mode accepts repeated `api_key_ref` values and filters by their union; omitting the parameter restores the full data set. The `api_key_ref` and compatible single-value `api_key_hash` filters require a valid `X-Full-Mode-Session` on every statistics, trend, group, request, and cost endpoint. Normal requests without a filter return only redacted data; query parameters cannot bypass full-mode authorization.
 
 ### Privacy and Security Boundary
 
@@ -393,7 +407,7 @@ This fork disables API-key tracking by default, so API-key ciphertext and finger
 
 Changing `api_key_secret` does not delete the database or historical statistics. It creates or activates the matching crypto generation. API keys from generations unavailable under the current secret are shown as "Plaintext unavailable" and become readable again after switching back to the matching older secret. Setting `api_key_secret` to an empty string disables API-key tracking for subsequently received records.
 
-Only the two static HTML shells are public resource routes. Statistics, requests, prices, preferences, exchange rates, costs, backups, and settings require a valid five-minute session issued through the management-authenticated route. This capability boundary does not replace TLS, network access controls, or secure host Management API configuration.
+Normal redacted statistics, request, cost, price, exchange-rate, and preference reads are public resource responses. Full-mode data and sensitive management operations require a valid five-minute session issued through the management-authenticated route. This capability boundary does not replace TLS, network access controls, or secure host Management API configuration.
 
 ### Installation and Configuration
 
@@ -507,8 +521,7 @@ Full-mode resources:
 | `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/backup` | Download a database backup |
 | `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/restore` | Upload and restore a backup in stages |
 | `GET` | `/v0/resource/plugins/cap-token-usage-tracker-sizhe233/full-mode/reset` | Reset statistics after validating the session and `X-Confirm-Reset: reset` |
-
-Every resource-data route listed above requires the following header; only `/dashboard` and `/full-dashboard` are public static shells:
+Normal resource reads return redacted data without a plugin session. The non-sensitive `/preferences?save=1` form may also persist only pagination, column-visibility, and time-range preferences without a plugin session. Full-mode resources and API-key filtering/reveal operations require the following header:
 
 ```http
 X-Full-Mode-Session: <session-token>

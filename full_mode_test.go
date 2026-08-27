@@ -125,7 +125,7 @@ func TestFullModeSessionCreationIsBounded(t *testing.T) {
 	}
 }
 
-func TestResourceDataRoutesRequireAuthenticatedSession(t *testing.T) {
+func TestResourceDataRoutesAllowRedactedNormalMode(t *testing.T) {
 	config := testConfig(t)
 	store, err := openStore(config)
 	if err != nil {
@@ -180,8 +180,12 @@ func TestResourceDataRoutesRequireAuthenticatedSession(t *testing.T) {
 		runtime.routes.resourcePreferencesPath,
 	}
 	for _, path := range paths {
-		if response := call(http.MethodGet, path, ""); response.StatusCode != http.StatusUnauthorized {
-			t.Fatalf("unauthenticated resource %s status = %d body=%s", path, response.StatusCode, response.Body)
+		response := call(http.MethodGet, path, "")
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("normal resource %s status = %d body=%s", path, response.StatusCode, response.Body)
+		}
+		if strings.Contains(string(response.Body), `"account_ref"`) || strings.Contains(string(response.Body), `"api_key"`) || strings.Contains(string(response.Body), `"api_key_hash"`) || strings.Contains(string(response.Body), `"api_key_generation"`) || strings.Contains(string(response.Body), `"api_key_ref"`) || strings.Contains(string(response.Body), `"api_key_status"`) || strings.Contains(string(response.Body), `"api_keys"`) {
+			t.Fatalf("normal resource %s returned sensitive identity fields: %s", path, response.Body)
 		}
 	}
 
@@ -197,8 +201,8 @@ func TestResourceDataRoutesRequireAuthenticatedSession(t *testing.T) {
 
 	runtime.revokeFullModeSession(session)
 	for _, path := range paths {
-		if response := call(http.MethodGet, path, session); response.StatusCode != http.StatusUnauthorized {
-			t.Fatalf("revoked session accepted by %s", path)
+		if response := call(http.MethodGet, path, session); response.StatusCode != http.StatusOK {
+			t.Fatalf("redacted resource rejected revoked session for %s: status=%d body=%s", path, response.StatusCode, response.Body)
 		}
 	}
 
@@ -215,21 +219,47 @@ func TestResourceDataRoutesRequireAuthenticatedSession(t *testing.T) {
 	runtime.fullModeSessions[hash] = fullModeSession{expiresAt: nowUTC().Add(-time.Second)}
 	runtime.fullModeMu.Unlock()
 	for _, path := range paths {
-		if response := call(http.MethodGet, path, expiredSession); response.StatusCode != http.StatusUnauthorized {
-			t.Fatalf("expired session accepted by %s", path)
+		if response := call(http.MethodGet, path, expiredSession); response.StatusCode != http.StatusOK {
+			t.Fatalf("redacted resource rejected expired session for %s: status=%d body=%s", path, response.StatusCode, response.Body)
 		}
 	}
 
-	for _, route := range []struct {
-		method string
-		path   string
-	}{
-		{http.MethodGet, runtime.routes.statsPath},
-		{http.MethodGet, runtime.routes.backupPath},
-	} {
-		if response := call(route.method, route.path, ""); response.StatusCode == http.StatusUnauthorized {
-			t.Fatalf("management route %s incorrectly requires a plugin session", route.path)
+	for _, path := range []string{runtime.routes.fullModeDataPath, runtime.routes.fullModePricesPath, runtime.routes.fullModeBackupPath, runtime.routes.fullModeResetPath} {
+		if response := call(http.MethodGet, path, ""); response.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("full-mode resource %s accepted without session: status=%d body=%s", path, response.StatusCode, response.Body)
 		}
+	}
+}
+
+func TestNormalPreferencesCanPersistOnlyNonSensitiveValues(t *testing.T) {
+	config := testConfig(t)
+	store, err := openStore(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime := &pluginRuntime{store: store, config: config}
+	defer runtime.shutdown()
+	runtime.routes = registeredRoutes{pluginID: "test", resourcePreferencesPath: "/v0/resource/plugins/test/preferences"}
+	request, err := json.Marshal(pluginapi.ManagementRequest{
+		Method: http.MethodGet,
+		Path:   runtime.routes.resourcePreferencesPath,
+		Query: map[string][]string{
+			"save":                  {"1"},
+			"request_page_size":     {"25"},
+			"dimension_page_size":   {"50"},
+			"time_range_mode":       {"last_7_days"},
+			"hidden_request_column": {"source"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := runtime.handleManagement(request)
+	if err != nil || response.StatusCode != http.StatusOK {
+		t.Fatalf("normal preference save response: %+v, %v", response, err)
+	}
+	if strings.Contains(string(response.Body), "api_key") || strings.Contains(string(response.Body), "account_ref") {
+		t.Fatalf("normal preference save returned sensitive fields: %s", response.Body)
 	}
 }
 

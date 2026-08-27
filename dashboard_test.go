@@ -771,35 +771,48 @@ func TestDashboardResponseHeaders(t *testing.T) {
 }
 
 func TestDashboardUsesManagementCenterCapabilityBridge(t *testing.T) {
-	for name, html := range map[string]string{"dashboard": dashboardHTML, "full-dashboard": fullDashboardHTML} {
-		for _, required := range []string{
-			`protocol:'cliproxy-plugin-capability-v1'`,
-			`type:'request'`,
-			`event.source!==window.parent`,
-			`event.origin!==window.location.origin`,
-			`message.pluginID!==pluginID`,
-			`message.requestID!==pluginCapabilityRequestID`,
-			`crypto.getRandomValues(bytes)`,
-			`window.parent.postMessage`,
-			`'X-Full-Mode-Session':fullModeSession`,
-			`if(response.status===401&&fullModeSession){expireFullModeSession();}`,
-		} {
-			if !strings.Contains(html, required) {
-				t.Fatalf("%s missing capability bridge contract %q", name, required)
-			}
+	for _, required := range []string{
+		`protocol:'cliproxy-plugin-capability-v1'`,
+		`type:'request'`,
+		`event.source!==window.parent`,
+		`event.origin!==window.location.origin`,
+		`message.pluginID!==pluginID`,
+		`message.requestID!==pluginCapabilityRequestID`,
+		`crypto.getRandomValues(bytes)`,
+		`window.parent.postMessage`,
+		`if(!fullModePage||event.source!==window.parent`,
+		`'X-Full-Mode-Session':fullModeSession`,
+		`if(response.status===401&&fullModeSession){expireFullModeSession();}`,
+	} {
+		if !strings.Contains(fullDashboardHTML, required) {
+			t.Fatalf("full dashboard missing capability bridge contract %q", required)
 		}
-		for _, forbidden := range []string{
-			`id="fullModeDialog"`,
-			`fullModeKeyInput`,
-			`managementBase+'/full-mode/session'`,
-			`localStorage`,
-			`sessionStorage`,
-			`#session=`,
-		} {
-			if strings.Contains(html, forbidden) {
-				t.Fatalf("%s contains forbidden authentication pattern %q", name, forbidden)
-			}
+	}
+	for _, forbidden := range []string{
+		`id="fullModeDialog"`, `fullModeKeyInput`, `managementBase+'/full-mode/session'`,
+		`localStorage`, `sessionStorage`, `#session=`,
+	} {
+		if strings.Contains(dashboardHTML, forbidden) || strings.Contains(fullDashboardHTML, forbidden) {
+			t.Fatalf("dashboard contains forbidden authentication pattern %q", forbidden)
 		}
+	}
+	if !strings.Contains(dashboardHTML, `if(!fullModePage||event.source!==window.parent`) {
+		t.Fatal("normal dashboard must reject capability responses when not in full mode")
+	}
+	if !strings.Contains(dashboardHTML, `function startDashboard(){if(fullModePage&&!fullModeSession){requestPluginCapability();return;}`) {
+		t.Fatal("normal dashboard must load redacted data without a capability session")
+	}
+	if !strings.Contains(fullDashboardHTML, `function startDashboard(){if(fullModePage&&!fullModeSession){requestPluginCapability();return;}`) {
+		t.Fatal("full dashboard must retain the capability session guard")
+	}
+	if strings.Contains(dashboardHTML, `function startDashboard(){if(!fullModeSession){requestPluginCapability();return;}`) {
+		t.Fatal("normal dashboard must not wait unconditionally for a capability session")
+	}
+	if !strings.Contains(dashboardHTML, `if(fullModePage&&fullModeSession&&`) {
+		t.Fatal("dashboard API must keep full-mode session use page-scoped")
+	}
+	if !strings.Contains(dashboardHTML, `window.location.assign(resourceBase+'/full-dashboard')`) {
+		t.Fatal("normal dashboard must navigate to the separate full dashboard")
 	}
 
 	for _, forbidden := range []string{

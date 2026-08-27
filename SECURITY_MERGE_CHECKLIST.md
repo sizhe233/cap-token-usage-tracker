@@ -4,14 +4,15 @@ This fork is pinned to the audited upstream baseline `v2.0.3` (`4bcf440844bbfef4
 
 ## Authentication boundary
 
-- `/v0/resource/plugins/<id>/dashboard` and `/full-dashboard` may return static HTML shells only.
-- Every resource route that returns or mutates runtime data must require a valid `X-Full-Mode-Session` token. Resource routes must remain GET-compatible because CPA dispatches them as GET-only:
-  - `/stats`, `/stats/initial`, `/stats/trends`, `/stats/groups`
-  - `/requests`, `/costs`, `/exchange-rate`, `/prices`, `/preferences`
-  - every `/full-mode/*` route except the static `/full-dashboard` shell
+- `/v0/resource/plugins/<id>/dashboard` and `/full-dashboard` return static HTML shells only.
+- Normal resource reads (`/stats`, `/stats/initial`, `/stats/trends`, `/stats/groups`, `/requests`, `/costs`, `/exchange-rate`, `/prices`, `/preferences`) may be called without a plugin session and must always return redacted data. The non-sensitive `/preferences?save=1` form may also persist only pagination, column-visibility, and time-range preferences without a plugin session. Redaction removes account references and all API-key identity fields; query filters for API-key identity remain forbidden without full mode.
+- Full-mode data and mutating/revealing resource routes must require a valid `X-Full-Mode-Session` token. Resource routes remain GET-compatible because CPA dispatches them as GET-only:
+  - `/full-mode/data`, `/full-mode/api-key-labels`, `/full-mode/session/revoke`
+  - `/full-mode/prices`, `/full-mode/prices/save`, `/full-mode/prices/sync`
+  - `/full-mode/backup`, `/full-mode/restore`, `/full-mode/reset`
 - Session issuance must remain under authenticated CPA Management API:
   `POST /v0/management/plugins/<id>/full-mode/session`.
-- The dashboard must not fetch statistics before the authenticated Management Center delegates a plugin-scoped capability through the versioned postMessage bridge.
+- The normal dashboard must load redacted data without waiting for a capability bridge. The full dashboard must request a plugin-scoped capability before loading protected data.
 - The CPA management key must never enter plugin DOM, JavaScript, messages, browser storage, or plugin storage. The Management Center holds it and sends only a plugin-scoped capability.
 - Full-mode sessions remain random, in-memory, revocable, and no longer than five minutes.
 

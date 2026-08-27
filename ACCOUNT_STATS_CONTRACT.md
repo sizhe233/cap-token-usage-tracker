@@ -31,7 +31,7 @@ Each aggregate and request detail may contain only:
 - provider/model/alias/source/executor/auth type/service tier/reasoning effort
 - counters, timestamps, result and latency metadata already covered by the base contract
 
-Account references are included only in capability-protected responses. Normal unauthenticated resource access remains denied, and any future redacted response must remove `account_ref`.
+Account references are included only in the CPA Management-authenticated account-stats response. Normal resource responses are redacted and remove `account_ref`.
 
 ## Batch endpoint
 
