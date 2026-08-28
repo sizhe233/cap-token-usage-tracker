@@ -5,7 +5,6 @@ import (
 	"errors"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -177,25 +176,6 @@ func firstNonEmptyIdentity(values ...string) string {
 	return ""
 }
 
-type authIdentityDiagnostics struct {
-	MissingAuthKey atomic.Uint64
-	LookupFailed   atomic.Uint64
-	AccountEmpty   atomic.Uint64
-	AccountFound   atomic.Uint64
-}
-
-func (d *authIdentityDiagnostics) snapshot() map[string]uint64 {
-	if d == nil {
-		return map[string]uint64{}
-	}
-	return map[string]uint64{
-		"missing_auth_key": d.MissingAuthKey.Load(),
-		"lookup_failed":    d.LookupFailed.Load(),
-		"account_empty":    d.AccountEmpty.Load(),
-		"account_found":    d.AccountFound.Load(),
-	}
-}
-
 func (r *pluginRuntime) setAuthRuntimeLookup(lookup authRuntimeLookup) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -205,6 +185,7 @@ func (r *pluginRuntime) setAuthRuntimeLookup(lookup authRuntimeLookup) {
 	}
 	r.authResolver = newAuthIdentityResolver(lookup)
 }
+
 func (r *pluginRuntime) resolveUsageIdentity(usage *normalizedUsage) {
 	if usage == nil {
 		return
@@ -218,25 +199,17 @@ func (r *pluginRuntime) resolveUsageIdentity(usage *normalizedUsage) {
 		authKey = strings.TrimSpace(usage.authID)
 	}
 	if authKey == "" {
-		r.authDiagnostics.MissingAuthKey.Add(1)
 		return
 	}
 	r.mu.RLock()
 	resolver := r.authResolver
 	r.mu.RUnlock()
 	if resolver == nil {
-		r.authDiagnostics.LookupFailed.Add(1)
 		return
 	}
 	identity, err := resolver.resolve(authKey, usage.Dimensions)
 	if err != nil {
-		r.authDiagnostics.LookupFailed.Add(1)
 		return
 	}
 	usage.Dimensions.Account = identity.Account
-	if identity.Account == "" {
-		r.authDiagnostics.AccountEmpty.Add(1)
-		return
-	}
-	r.authDiagnostics.AccountFound.Add(1)
 }

@@ -251,12 +251,11 @@ func (r *pluginRuntime) fullModeDataResponse(request pluginapi.ManagementRequest
 	}
 	crypto := r.crypto
 	return jsonResponse(http.StatusOK, map[string]any{
-		"full_mode":                    true,
-		"sensitive_data":               []any{},
-		"api_key_tracking_enabled":     crypto.enabled,
-		"api_key_uses_default_secret":  crypto.enabled && crypto.usesDefaultSecret,
-		"api_key_labels":               labels,
-		"account_identity_diagnostics": r.authDiagnostics.snapshot(),
+		"full_mode":                   true,
+		"sensitive_data":              []any{},
+		"api_key_tracking_enabled":    crypto.enabled,
+		"api_key_uses_default_secret": crypto.enabled && crypto.usesDefaultSecret,
+		"api_key_labels":              labels,
 	}), nil
 }
 
