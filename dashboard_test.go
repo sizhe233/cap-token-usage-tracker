@@ -782,18 +782,27 @@ func TestDashboardUsesManagementCenterCapabilityBridge(t *testing.T) {
 		`window.parent.postMessage`,
 		`if(!fullModePage||event.source!==window.parent`,
 		`'X-Full-Mode-Session':fullModeSession`,
-		`if(response.status===401&&fullModeSession){expireFullModeSession();}`,
+		`if(response.status===401&&fullModeSession&&!isSessionIssue){expireFullModeSession();}`,
+		`id="fullModeDialog"`,
+		`id="fullModeKeyInput"`,
+		`type="password" autocomplete="off"`,
+		`managementBase+'/full-mode/session'`,
+		`function unlockFullMode()`,
+		`if(window.parent===window){openFullModeDialog();return;}`,
+		`pluginCapabilityTimer=setTimeout(function(){pluginCapabilityRequestID='';openFullModeDialog();},10000)`,
 	} {
 		if !strings.Contains(fullDashboardHTML, required) {
 			t.Fatalf("full dashboard missing capability bridge contract %q", required)
 		}
 	}
-	for _, forbidden := range []string{
-		`id="fullModeDialog"`, `fullModeKeyInput`, `managementBase+'/full-mode/session'`,
-		`localStorage`, `sessionStorage`, `#session=`,
-	} {
+	for _, forbidden := range []string{`localStorage`, `sessionStorage`, `#session=`} {
 		if strings.Contains(dashboardHTML, forbidden) || strings.Contains(fullDashboardHTML, forbidden) {
 			t.Fatalf("dashboard contains forbidden authentication pattern %q", forbidden)
+		}
+	}
+	for _, forbidden := range []string{`id="fullModeDialog"`, `fullModeKeyInput`, `managementBase+'/full-mode/session'`, `type="password"`} {
+		if strings.Contains(dashboardHTML, forbidden) {
+			t.Fatalf("normal dashboard contains full-mode authentication pattern %q", forbidden)
 		}
 	}
 	if !strings.Contains(dashboardHTML, `if(!fullModePage||event.source!==window.parent`) {
