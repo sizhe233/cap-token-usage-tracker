@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/sha256"
 	"errors"
-	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -195,15 +194,6 @@ func (d *authIdentityDiagnostics) snapshot() map[string]uint64 {
 		"account_empty":    d.AccountEmpty.Load(),
 		"account_found":    d.AccountFound.Load(),
 	}
-}
-
-func encodeAccountIdentityDiagnostics(values map[string]uint64) string {
-	return fmt.Sprintf("missing=%d;lookup_failed=%d;empty=%d;found=%d",
-		values["missing_auth_key"],
-		values["lookup_failed"],
-		values["account_empty"],
-		values["account_found"],
-	)
 }
 
 func (r *pluginRuntime) setAuthRuntimeLookup(lookup authRuntimeLookup) {
