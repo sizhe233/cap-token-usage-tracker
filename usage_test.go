@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v7/sdk/pluginabi"
 	"github.com/router-for-me/CLIProxyAPI/v7/sdk/pluginapi"
 )
 
@@ -125,6 +127,78 @@ func TestHandleUsagePersistsAccountReferenceWithoutRawAuthIndex(t *testing.T) {
 	encodedPage, marshalErr := json.Marshal(page)
 	if err != nil || marshalErr != nil || len(page.Items) != 1 || !validAccountReference(page.Items[0].AccountRef) || strings.Contains(string(encodedPage), "raw-account-index") {
 		t.Fatalf("account request detail = %+v, err=%v, marshalErr=%v", page, err, marshalErr)
+	}
+}
+
+func TestUsageHandleRPCPersistsCurrentSDKRecord(t *testing.T) {
+	_ = runtimeState.shutdown()
+	tempDir := t.TempDir()
+	t.Cleanup(func() { _ = runtimeState.shutdown() })
+	configYAML := []byte("data_path: " + strings.ReplaceAll(filepath.Join(tempDir, "rpc-usage.db"), "\\", "/") + "\n" +
+		"sync_on_record: true\n" +
+		"account_tracking_secret: " + strings.Repeat("account-secret-", 3) + "\n")
+	request, err := json.Marshal(map[string]any{
+		"config_yaml":    configYAML,
+		"schema_version": 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var registrationResponse rpcEnvelope
+	if err := json.Unmarshal(dispatchRPC(pluginabi.MethodPluginRegister, request), &registrationResponse); err != nil {
+		t.Fatal(err)
+	}
+	if !registrationResponse.OK || registrationResponse.Error != nil {
+		t.Fatalf("plugin registration failed: %+v", registrationResponse)
+	}
+	usageRequest, err := json.Marshal(pluginapi.UsageRecord{
+		Provider:     "codex",
+		ExecutorType: "CodexExecutor",
+		Model:        "gpt-test",
+		Alias:        "client-gpt",
+		AuthID:       "raw-auth-id",
+		AuthIndex:    "raw-auth-index",
+		AuthType:     "oauth",
+		Source:       "https://api.openai.com/v1",
+		RequestedAt:  time.Now().UTC(),
+		Detail: pluginapi.UsageDetail{
+			InputTokens:  11,
+			OutputTokens: 7,
+			TotalTokens:  18,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var usageResponse rpcEnvelope
+	if err := json.Unmarshal(dispatchRPC(pluginabi.MethodUsageHandle, usageRequest), &usageResponse); err != nil {
+		t.Fatal(err)
+	}
+	if !usageResponse.OK || usageResponse.Error != nil {
+		t.Fatalf("usage RPC failed: %+v", usageResponse)
+	}
+	page, err := runtimeState.store.QueryRequests("24h", 0, 10, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Items) != 1 {
+		t.Fatalf("persisted request count = %d, want 1", len(page.Items))
+	}
+	item := page.Items[0]
+	if item.Provider != "codex" || item.ExecutorType != "CodexExecutor" || item.Model != "gpt-test" || item.Alias != "client-gpt" || item.TotalTokens != 18 {
+		t.Fatalf("persisted SDK usage record = %+v", item)
+	}
+	if !validAccountReference(item.AccountRef) {
+		t.Fatalf("persisted account reference = %q", item.AccountRef)
+	}
+	encoded, err := json.Marshal(item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{"raw-auth-id", "raw-auth-index"} {
+		if strings.Contains(string(encoded), secret) {
+			t.Fatalf("persisted request leaks %s: %s", secret, encoded)
+		}
 	}
 }
 
