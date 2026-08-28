@@ -6,7 +6,7 @@
       "name": "CAP Token Usage Tracker (audited)",
       "description": "Audited and version-pinned token usage tracker with API-key tracking disabled by default and optional privacy-preserving account usage summaries.",
       "author": "AITNR / sizhe233",
-      "version": "2.0.3-audit.12",
+      "version": "2.0.3-audit.13",
       "repository": "https://github.com/sizhe233/cap-token-usage-tracker",
       "homepage": "https://github.com/sizhe233/cap-token-usage-tracker",
       "license": "MIT",
@@ -23,30 +23,30 @@
           {
             "goos": "linux",
             "goarch": "amd64",
-              "url": "https://github.com/sizhe233/cap-token-usage-tracker/releases/download/v2.0.3-audit.12/cap-token-usage-tracker-sizhe233_2.0.3-audit.12_linux_amd64.zip",
-              "sha256": "17c33a69d8fefdfa1227e280517dbcf66802018bae0d364cee5dfbcf69e69fd0",
-              "size": 3451263
+              "url": "https://github.com/sizhe233/cap-token-usage-tracker/releases/download/v2.0.3-audit.13/cap-token-usage-tracker-sizhe233_2.0.3-audit.13_linux_amd64.zip",
+              "sha256": "f826c7d4da3e463a0fe5ffd48f8afbc572290fee2be47078bbb8643c42e811b5",
+              "size": 3462287
           },
           {
             "goos": "linux",
             "goarch": "arm64",
-              "url": "https://github.com/sizhe233/cap-token-usage-tracker/releases/download/v2.0.3-audit.12/cap-token-usage-tracker-sizhe233_2.0.3-audit.12_linux_arm64.zip",
-              "sha256": "0c48d1515d014f15e1c62cd2b5c5fdb7d6e181ca98b165ff89c75d7481f60b31",
-              "size": 3124034
+              "url": "https://github.com/sizhe233/cap-token-usage-tracker/releases/download/v2.0.3-audit.13/cap-token-usage-tracker-sizhe233_2.0.3-audit.13_linux_arm64.zip",
+              "sha256": "a796a65175a373292623986055724a2370c9b0bebff72e835919667ed517650d",
+              "size": 3133100
           },
           {
             "goos": "darwin",
             "goarch": "arm64",
-              "url": "https://github.com/sizhe233/cap-token-usage-tracker/releases/download/v2.0.3-audit.12/cap-token-usage-tracker-sizhe233_2.0.3-audit.12_darwin_arm64.zip",
-              "sha256": "b6b30c8d9768965be90ad79093e20bad3f6830d7cea346f8395b73f2c53f9ac8",
-              "size": 3022205
+              "url": "https://github.com/sizhe233/cap-token-usage-tracker/releases/download/v2.0.3-audit.13/cap-token-usage-tracker-sizhe233_2.0.3-audit.13_darwin_arm64.zip",
+              "sha256": "50fad874416c6e6119d85bd971916cf356bcc601a27f0cae64aa54be5ecd0d75",
+              "size": 3031119
           },
           {
             "goos": "windows",
             "goarch": "amd64",
-              "url": "https://github.com/sizhe233/cap-token-usage-tracker/releases/download/v2.0.3-audit.12/cap-token-usage-tracker-sizhe233_2.0.3-audit.12_windows_amd64.zip",
-              "sha256": "825ccda42bd785829ef3ef635cc35865c94c9169826a727d0c1c2cf8d431bca9",
-              "size": 3418212
+              "url": "https://github.com/sizhe233/cap-token-usage-tracker/releases/download/v2.0.3-audit.13/cap-token-usage-tracker-sizhe233_2.0.3-audit.13_windows_amd64.zip",
+              "sha256": "16aae0748030cfc9469b998bba96bf549949fceca32f025b0d0e2d528990cad4",
+              "size": 3429125
           }
         ]
       }
