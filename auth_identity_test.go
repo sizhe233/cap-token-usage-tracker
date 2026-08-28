@@ -115,3 +115,15 @@ func TestAuthIdentityResolverNegativeCachesFailures(t *testing.T) {
 		t.Fatalf("lookup calls = %d, want 1", calls.Load())
 	}
 }
+
+func TestAuthIdentityResolverAcceptsAuthIDLookupKey(t *testing.T) {
+	called := ""
+	resolver := newAuthIdentityResolver(func(authKey string) (authRuntimeMetadata, error) {
+		called = authKey
+		return authRuntimeMetadata{Provider: "codex", Email: "user@example.com"}, nil
+	})
+	identity, err := resolver.resolve("auth-id", Dimensions{Provider: "codex"})
+	if err != nil || called != "auth-id" || identity.Account != "user@example.com" {
+		t.Fatalf("identity=%+v err=%v called=%q", identity, err, called)
+	}
+}

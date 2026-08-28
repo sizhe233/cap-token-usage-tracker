@@ -168,8 +168,8 @@ func clearHostAPI() {
 	hostAPICallbackState.Unlock()
 }
 
-func hostRuntimeAuthLookup(authIndex string) (authRuntimeMetadata, error) {
-	request, err := json.Marshal(pluginapi.HostAuthGetRequest{AuthIndex: authIndex})
+func hostRuntimeAuthLookup(authKey string) (authRuntimeMetadata, error) {
+	request, err := json.Marshal(map[string]string{"auth_index": authKey, "auth_id": authKey})
 	if err != nil {
 		return authRuntimeMetadata{}, fmt.Errorf("encode runtime auth request: %w", err)
 	}
