@@ -49,6 +49,7 @@ type pluginRuntime struct {
 	modelsDevFetcher  *modelsDevFetcher
 	exchangeRates     *exchangeRateService
 	authResolver      *authIdentityResolver
+	authDiagnostics   authIdentityDiagnostics
 	priceSyncing      bool
 	fullModeMu        sync.Mutex
 	fullModeSessions  map[[32]byte]fullModeSession

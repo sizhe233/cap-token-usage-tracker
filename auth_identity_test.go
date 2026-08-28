@@ -127,3 +127,32 @@ func TestAuthIdentityResolverAcceptsAuthIDLookupKey(t *testing.T) {
 		t.Fatalf("identity=%+v err=%v called=%q", identity, err, called)
 	}
 }
+
+func TestResolveUsageIdentityDiagnosticsDoNotExposeIdentifiers(t *testing.T) {
+	runtime := &pluginRuntime{}
+	runtime.resolveUsageIdentity(&normalizedUsage{})
+	if got := runtime.authDiagnostics.snapshot()["missing_auth_key"]; got != 1 {
+		t.Fatalf("missing auth key count = %d", got)
+	}
+	runtime.setAuthRuntimeLookup(func(string) (authRuntimeMetadata, error) {
+		return authRuntimeMetadata{}, errors.New("lookup failed")
+	})
+	runtime.resolveUsageIdentity(&normalizedUsage{authIndex: "secret-auth-index"})
+	if got := runtime.authDiagnostics.snapshot()["lookup_failed"]; got != 1 {
+		t.Fatalf("lookup failed count = %d", got)
+	}
+	runtime.setAuthRuntimeLookup(func(string) (authRuntimeMetadata, error) {
+		return authRuntimeMetadata{Provider: "codex"}, nil
+	})
+	runtime.resolveUsageIdentity(&normalizedUsage{authIndex: "empty-account-index"})
+	if got := runtime.authDiagnostics.snapshot()["account_empty"]; got != 1 {
+		t.Fatalf("account empty count = %d", got)
+	}
+	runtime.setAuthRuntimeLookup(func(string) (authRuntimeMetadata, error) {
+		return authRuntimeMetadata{Provider: "codex", Email: "user@example.com"}, nil
+	})
+	runtime.resolveUsageIdentity(&normalizedUsage{authIndex: "found-account-index"})
+	if got := runtime.authDiagnostics.snapshot()["account_found"]; got != 1 {
+		t.Fatalf("account found count = %d", got)
+	}
+}
