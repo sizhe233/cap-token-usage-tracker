@@ -63,12 +63,13 @@ CAP Token Usage Tracker 是 CLIProxyAPI 的持久化 Token 用量统计插件。
 - Dashboard PNG 导出
 - bbolt 数据库备份与恢复
 - API Key 明文查看、筛选、标签管理和密钥安全状态提示
+- 新采集记录对应的清理后账号邮箱或账号标签；该列只在完整模式出现，历史记录无法补回账号
 
-会话有效期为 5 分钟。完整模式数据、API Key 明文查看、筛选、标签、备份、恢复、价格写入和重置都要求通过 `X-Full-Mode-Session` 请求头发送有效令牌；令牌不写入数据库，退出时会主动撤销，页面只在内存中保留令牌。普通模式仅读取始终脱敏的资源数据，不需要插件会话，以兼容没有 capability bridge 的官方 Management Center。管理密钥始终只由管理中心持有，不进入插件 DOM、脚本或存储。
+`Source` 始终表示规范化的 provider/integration 来源，账号显示在独立的 `Account` 列中；插件不会猜测或展示 `plan_type`。
 
-完整模式 HTML 本身不嵌入受保护数据。API Key 明文、标签和密钥安全状态由带 `X-Full-Mode-Session` 鉴权的资源接口按需返回，不能写进普通模式 HTML、普通资源响应或前端静态脚本。仅通过 CSS 隐藏元素不能保护敏感数据。
+会话有效期为 5 分钟。完整模式数据、账号列、API Key 明文查看、筛选、标签、备份、恢复、价格写入和重置都要求通过 `X-Full-Mode-Session` 请求头发送有效令牌；令牌不写入数据库，退出时会主动撤销，页面只在内存中保留令牌。普通模式仅读取始终脱敏的资源数据，不需要插件会话，以兼容没有 capability bridge 的官方 Management Center。管理密钥始终只由管理中心持有，不进入插件 DOM、脚本或存储。
 
-普通模式和完整模式共享统计数据源，但普通模式会删除 API Key 明文、引用、指纹、加密代际和解密状态。完整模式会根据当前配置的 `api_key_secret` 逐项解密；无法解密的历史密文显示“明文不可用”，不会影响其他统计数据。
+完整模式 HTML 本身不嵌入受保护数据。账号元数据由宿主 `host.auth.get_runtime` 在采集时按 Auth Index 短暂查询，仅保留清理后的邮箱、OAuth 账号或标签；插件不调用 `host.auth.get`，不读取或保存 credential JSON、文件名或路径。
 
 `/stats/initial` 与 `/stats/groups` 和旧版 `/stats` 一样执行脱敏：普通模式响应不含 API Key 集合或任何维度中的 API Key 字段；`/stats/trends` 只包含时间、模型和计数器。完整模式可重复传入 `api_key_ref`，服务端按这些 API Key 的并集筛选；不传该参数即恢复全量。`api_key_ref` 与兼容的单值 `api_key_hash` 筛选在所有统计、趋势、维度、请求和费用接口中都必须携带有效的 `X-Full-Mode-Session`，未授权请求会返回 `403`，不能通过查询参数绕过完整模式鉴权。
 
@@ -80,15 +81,17 @@ CAP Token Usage Tracker 是 CLIProxyAPI 的持久化 Token 用量统计插件。
 - Auth ID 或 Auth Index 原始值
 - prompt、请求正文或模型响应正文
 - 失败响应正文和响应头
-
 数据库会保存：
 
 - 分钟级聚合维度和计数
 - 逐请求时间、模型、来源、服务层级、结果、延迟、推理强度和 Token 计数
+- 新采集记录中经过清理的账号显示元数据（仅完整模式资源返回）
 - API Key 加密密文、带密钥指纹、加密代际和用户设置的显示标签
 - 经过清理的来源标签或规范化提供商地址
 - 模型价格、Context Tier、服务层级价格和同步元数据
 - 仪表盘时间范围、分页大小和隐藏列偏好
+
+数据库不会保存原始 Auth ID、Auth Index、credential 文件名、credential 路径或 credential JSON；账号显示元数据不用于 `account-stats`，该接口仍只返回 opaque `account_ref`。
 
 来源字段会进行凭据清理。疑似 API Key、Bearer Token 或其他凭据形式的来源不会按原值保存；插件会尽量回退到规范化的提供商服务地址。
 
@@ -96,7 +99,7 @@ CAP Token Usage Tracker 是 CLIProxyAPI 的持久化 Token 用量统计插件。
 
 更换 `api_key_secret` 不会删除数据库或历史统计，而是创建或激活对应的加密代际。当前密钥无法解密的旧代 API Key 显示“明文不可用”；切回对应旧密钥后可以再次读取。将 `api_key_secret` 设为空字符串会禁用 API Key 跟踪，之后收到的记录不会保存 API Key 密文或指纹。
 
-普通 `/dashboard` 壳和脱敏资源数据接口可以匿名访问；这些普通响应始终删除 `account_ref`、API Key 明文、引用、指纹、加密代际和状态。完整模式数据、API Key reveal/filter/label、备份、恢复、价格写入和重置仍要求通过 Management 鉴权路由签发的 5 分钟会话。该能力边界不能替代 TLS、网络访问控制和宿主 Management API 安全配置。
+普通 `/dashboard` 壳和脱敏资源数据接口可以匿名访问；这些普通响应始终删除 `account`、`account_ref`、API Key 明文、引用、指纹、加密代际和状态。完整模式数据、API Key reveal/filter/label、备份、恢复、价格写入和重置仍要求通过 Management 鉴权路由签发的 5 分钟会话。该能力边界不能替代 TLS、网络访问控制和宿主 Management API 安全配置。
 
 ### 安装与配置
 
@@ -133,18 +136,19 @@ plugins:
 |---|---:|---|
 | `data_path` | `CLIProxyAPI/data/token-usage-tracker.db` | bbolt 数据库路径；显式相对路径以 CLIProxyAPI 进程工作目录为基准 |
 | `retention_days` | `365` | 统计和逐请求明细保留天数，范围 1-3650 |
-| `flush_interval` | `5s` | 批量模式最长刷盘间隔，范围 1 秒-1 小时 |
-| `flush_max_records` | `100` | 批量模式达到该记录数时立即刷盘，范围 1-1000000 |
-| `sync_on_record` | `true` | 每条记录提交数据库后再确认；设为 `false` 时启用批量模式 |
-| `account_tracking_secret` | 空字符串 | 默认不按账号归因；设置至少 32 字节的独立随机密钥后启用隐私化账号统计 |
+| `account_tracking_secret` | 空字符串 | 默认不按账号归因；设置至少 32 字节的独立随机密钥后启用隐私化账号统计和完整模式账号显示 |
 | `response_compression` | `true` | 客户端支持 gzip 时压缩公共仪表盘 HTML 和 JSON 响应；管理接口保持未压缩 |
 | `response_compression_min_bytes` | `1024` | 启用 gzip 的最小响应字节数，范围 0-16777216 |
 
 `api_key_secret` 默认留空并关闭 API Key 跟踪。只有确实需要按下游 Key 分析时，才应设置至少 32 字节的随机密钥；含 `#`、`:`、`{}` 等特殊字符的值应使用 YAML 引号包裹。该密钥保存在 CLIProxyAPI 配置中，应限制配置文件权限，避免提交到公开仓库，也不要与数据库备份一起分发。
 
-`account_tracking_secret` 与 `api_key_secret` 独立。启用后，插件只持久化不可逆的 `acct_` 账号引用以及请求/Token/费用聚合，不保存原始 Auth Index、Auth ID、邮箱、文件名或凭证内容。账号引用无法在没有该密钥的情况下反推原始账号。
+`account_tracking_secret` 与 `api_key_secret` 独立。启用后，插件为新采集记录保留清理后的账号显示元数据，并持久化不可逆的 `acct_` 账号引用以及请求/Token/费用聚合；普通响应删除账号字段，完整模式才返回账号。插件不保存原始 Auth Index、Auth ID、邮箱、文件名、路径或凭证内容；账号引用无法在没有该密钥的情况下反推原始账号。
+
+准确的 `plan_type` 不在当前 CPA UsageRecord 合同中，因此插件不显示或推断套餐类型。
 
 默认 `sync_on_record: true` 优先保证记录持久化。设为 `false` 可以减少写入次数，但进程被强制终止时，最多可能丢失一个 `flush_interval` 或尚未达到 `flush_max_records` 的窗口。
+
+
 
 默认 `response_compression: true` 通过标准 `Accept-Encoding` 协商启用 gzip，因此直接访问 CLIProxyAPI IP 和端口的现代浏览器也能获得压缩响应。不支持 gzip 或显式发送 `gzip;q=0` 的客户端仍会收到原始响应；二进制备份、已编码响应和 `/v0/management/` 接口不会由插件压缩。
 

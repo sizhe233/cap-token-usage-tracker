@@ -130,6 +130,41 @@ func TestHandleUsagePersistsAccountReferenceWithoutRawAuthIndex(t *testing.T) {
 	}
 }
 
+func TestAccountDisplayIsPersistedSeparatelyFromSource(t *testing.T) {
+	config := testConfig(t)
+	config.SyncOnRecord = true
+	runtime := &pluginRuntime{}
+	defer runtime.shutdown()
+	if err := runtime.applyConfig(config); err != nil {
+		t.Fatal(err)
+	}
+	runtime.setAuthRuntimeLookup(func(string) (authRuntimeMetadata, error) {
+		return authRuntimeMetadata{Provider: "codex", Email: "user@example.com"}, nil
+	})
+	raw, err := json.Marshal(pluginapi.UsageRecord{Provider: "codex", Model: "model", Source: "https://api.openai.com/v1", AuthIndex: "stable-auth-index", RequestedAt: time.Now().UTC(), Detail: pluginapi.UsageDetail{TotalTokens: 1}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runtime.handleUsage(raw); err != nil {
+		t.Fatal(err)
+	}
+	page, err := runtime.store.QueryRequests("24h", 0, 10, "")
+	if err != nil || len(page.Items) != 1 {
+		t.Fatalf("request page = %+v, err=%v", page, err)
+	}
+	item := page.Items[0]
+	if item.Source != "https://api.openai.com/v1" || item.Account != "user@example.com" {
+		t.Fatalf("request dimensions = %+v", item.Dimensions)
+	}
+	encoded, err := json.Marshal(item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "stable-auth-index") {
+		t.Fatal("request contains raw auth index")
+	}
+}
+
 func TestUsageHandleRPCPersistsCurrentSDKRecord(t *testing.T) {
 	_ = runtimeState.shutdown()
 	tempDir := t.TempDir()

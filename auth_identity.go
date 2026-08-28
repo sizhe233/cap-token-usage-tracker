@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"errors"
 	"strings"
 	"sync"
 	"time"
@@ -12,9 +13,11 @@ const (
 	authIdentityFailureTTL = time.Minute
 )
 
-// authRuntimeMetadata intentionally contains only presentation metadata from
+var errAuthRuntimeLookupFailed = errors.New("host runtime auth lookup failed")
+
+// authRuntimeMetadata contains only sanitized presentation metadata returned by
 // host.auth.get_runtime. Credential JSON, auth IDs, paths, and auth indexes are
-// never retained after resolving an identity.
+// never persisted; sanitized metadata is cached in memory for a short TTL.
 type authRuntimeMetadata struct {
 	Provider    string
 	Type        string
@@ -88,18 +91,22 @@ func (r *authIdentityResolver) resolve(authIndex string, usage Dimensions) (usag
 	if err == nil {
 		metadata = sanitizeAuthRuntimeMetadata(metadata)
 	}
+	lookupErr := err
+	if err != nil {
+		lookupErr = errAuthRuntimeLookupFailed
+	}
 	ttl := authIdentitySuccessTTL
 	if err != nil {
 		ttl = authIdentityFailureTTL
 	}
 
 	r.mu.Lock()
-	r.entries[cacheKey] = authIdentityCacheEntry{metadata: metadata, err: err, expires: r.now().Add(ttl)}
+	r.entries[cacheKey] = authIdentityCacheEntry{metadata: metadata, err: lookupErr, expires: r.now().Add(ttl)}
 	delete(r.inFlight, cacheKey)
 	close(flight.done)
 	r.mu.Unlock()
 	if err != nil {
-		return usageIdentity{}, err
+		return usageIdentity{}, lookupErr
 	}
 	return identityFromRuntimeMetadata(metadata, usage), nil
 }
@@ -120,7 +127,14 @@ func sanitizeAuthRuntimeMetadata(metadata authRuntimeMetadata) authRuntimeMetada
 
 func identityFromRuntimeMetadata(metadata authRuntimeMetadata, usage Dimensions) usageIdentity {
 	provider := displayAuthProvider(firstNonEmptyIdentity(metadata.Provider, metadata.Type, usage.Provider, usage.ExecutorType))
-	return usageIdentity{Provider: provider}
+	account := safeAuthAccount(metadata.Email)
+	if account == "" && strings.EqualFold(strings.TrimSpace(metadata.AccountType), "oauth") {
+		account = safeAuthAccount(metadata.Account)
+	}
+	if account == "" {
+		account = safeAuthLabel(metadata.Label)
+	}
+	return usageIdentity{Provider: provider, Account: account}
 }
 
 func displayAuthProvider(value string) string {
@@ -139,7 +153,7 @@ func displayAuthProvider(value string) string {
 
 func safeAuthAccount(value string) string {
 	value = normalizeDimension(value)
-	if looksLikeCredential(value) {
+	if value == "" || strings.ContainsAny(value, "/\\\r\n\t") || looksLikeCredential(value) {
 		return ""
 	}
 	return value
@@ -147,7 +161,7 @@ func safeAuthAccount(value string) string {
 
 func safeAuthLabel(value string) string {
 	value = strings.TrimSpace(value)
-	if value == "" || looksLikeCredential(value) {
+	if value == "" || strings.ContainsAny(value, "/\\\r\n\t") || looksLikeCredential(value) {
 		return ""
 	}
 	return normalizeDimension(value)
@@ -184,5 +198,5 @@ func (r *pluginRuntime) resolveUsageIdentity(usage *normalizedUsage) {
 	if err != nil {
 		return
 	}
-	usage.Dimensions.Source = canonicalUsageSourceWithIdentity(usage.Dimensions, identity.Provider, identity.Account)
+	usage.Dimensions.Account = identity.Account
 }

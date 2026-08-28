@@ -10,11 +10,13 @@ import (
 )
 
 type Dimensions struct {
-	Provider         string `json:"provider"`
-	ExecutorType     string `json:"executor_type"`
-	Model            string `json:"model"`
-	Alias            string `json:"alias"`
-	Source           string `json:"source"`
+	Provider     string `json:"provider"`
+	ExecutorType string `json:"executor_type"`
+	Model        string `json:"model"`
+	Alias        string `json:"alias"`
+	Source       string `json:"source"`
+	// Account is sanitized auth-file display metadata returned only in full mode.
+	Account          string `json:"account,omitempty"`
 	AccountRef       string `json:"account_ref,omitempty"`
 	APIKey           string `json:"api_key,omitempty"`
 	APIKeyHash       string `json:"api_key_hash,omitempty"`
@@ -144,6 +146,7 @@ func (f usageFilter) matches(dimensions Dimensions) bool {
 }
 
 func (d *Dimensions) Redact() {
+	d.Account = ""
 	d.AccountRef = ""
 	d.APIKey = ""
 	d.APIKeyHash = ""
@@ -830,6 +833,7 @@ func compareDimensions(left, right Dimensions) int {
 		cmp.Compare(left.Model, right.Model),
 		cmp.Compare(left.Alias, right.Alias),
 		cmp.Compare(left.Source, right.Source),
+		cmp.Compare(left.Account, right.Account),
 		cmp.Compare(left.AccountRef, right.AccountRef),
 		cmp.Compare(left.APIKeyGeneration, right.APIKeyGeneration),
 		cmp.Compare(left.APIKeyHash, right.APIKeyHash),

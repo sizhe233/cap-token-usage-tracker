@@ -156,12 +156,14 @@ func (r *pluginRuntime) handleUsage(raw []byte) (map[string]any, error) {
 	if err != nil {
 		return nil, withStatus(400, "%v", err)
 	}
+	authIndex := usage.authIndex
+	r.resolveUsageIdentity(&usage)
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if r.store == nil {
 		return nil, withStatus(503, "plugin storage is not initialized")
 	}
-	accountRef := accountReference(usage.authIndex, r.accountTracking)
+	accountRef := accountReference(authIndex, r.accountTracking)
 	usage.authIndex = ""
 	usage.Dimensions.AccountRef = accountRef
 	crypto := r.crypto

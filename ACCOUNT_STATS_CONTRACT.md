@@ -12,26 +12,30 @@ The host UsageRecord supplies `AuthIndex`. CAP derives an opaque `account_ref` w
 account_ref = acct_ + lowercase-hex(HMAC-SHA256(account_tracking_secret, AuthIndex)[:16])
 ```
 
-The raw AuthIndex, AuthID, filename, e-mail, account label, and provider credential JSON are never persisted or returned by the account-statistics endpoint.
+The raw AuthIndex, AuthID, filename, path, and provider credential JSON are never persisted or returned by the account-statistics endpoint. Full-mode dashboard rows may additionally contain a sanitized `account` display value for newly ingested records; this value is not returned by `account-stats` and is removed from normal resource responses.
 
 `account_tracking_secret` is independent from `api_key_secret`. An empty value disables account-level attribution; usage records remain available in aggregate/provider/model views. A configured value must be at least 32 bytes. Rotating it starts a new account-identity generation; it must not reinterpret old references under the new secret.
 
 ## Ingestion
 
-- Keep AuthIndex transient in `normalizedUsage` only until the account reference is derived.
+- Keep AuthIndex transient in `normalizedUsage` only until the account reference and optional runtime display metadata are resolved.
 - Derive the reference before the usage object is sent to persistence.
-- Do not call host runtime-auth lookup for account attribution.
+- CAP may call only the host's `host.auth.get_runtime` callback, which returns presentation metadata; it must not call `host.auth.get` or credential save/import APIs.
+- Sanitize and retain only an email, OAuth account name, or label suitable for display; reject paths, control characters, credential-like values, and all raw identifiers.
 - If AuthIndex is missing or the account secret is disabled, attribute the record to no account rather than guessing from Source, e-mail, filename, AuthID, or API key.
 
 ## Persisted account dimensions
 
-Each aggregate and request detail may contain only:
+Each aggregate and request detail may contain:
 
 - `account_ref` (opaque, lowercase, fixed-format)
+- optional sanitized `account` display metadata for newly ingested records
 - provider/model/alias/source/executor/auth type/service tier/reasoning effort
 - counters, timestamps, result and latency metadata already covered by the base contract
 
-Account references are included only in the CPA Management-authenticated account-stats response. Normal resource responses are redacted and remove `account_ref`.
+`Source` remains the canonical provider/integration source and is never replaced with the account value. No `plan_type` is emitted because the current CPA UsageRecord contract does not provide an authoritative plan field.
+
+`account_ref` is included only in the CPA Management-authenticated account-stats response. Normal resource responses remove both `account` and `account_ref`; full-mode stats, groups, and requests may return sanitized `account` values after session validation.
 
 ## Batch endpoint
 

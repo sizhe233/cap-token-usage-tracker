@@ -1052,6 +1052,31 @@ func TestDashboardModelShareMetricSwitch(t *testing.T) {
 	}
 }
 
+func TestDashboardAccountColumnIsFullModeOnly(t *testing.T) {
+	for _, marker := range []string{
+		"FULL_MODE_ACCOUNT_DIMENSION_COLUMN",
+		"FULL_MODE_ACCOUNT_DIMENSION_SORT",
+		"FULL_MODE_ACCOUNT_DIMENSION_CELL",
+		"FULL_MODE_ACCOUNT_REQUEST_COLUMN",
+		"FULL_MODE_ACCOUNT_REQUEST_SORT",
+		"FULL_MODE_ACCOUNT_REQUEST_CELL",
+	} {
+		if strings.Contains(dashboardHTML, marker) {
+			t.Fatalf("normal dashboard contains unresolved account marker %q", marker)
+		}
+		if strings.Contains(fullDashboardHTML, marker) {
+			t.Fatalf("full dashboard contains unresolved account marker %q", marker)
+		}
+	}
+	if strings.Contains(dashboardHTML, `"key:'account'`) || strings.Contains(dashboardHTML, "group.account") || strings.Contains(dashboardHTML, "item.account") {
+		t.Fatal("normal dashboard contains account display code")
+	}
+	for _, required := range []string{"table.account", "group.account", "item.account"} {
+		if !strings.Contains(fullDashboardHTML, required) {
+			t.Fatalf("full dashboard missing account display contract %q", required)
+		}
+	}
+}
 func TestDashboardChartAccessibilityIsKeyboardOperable(t *testing.T) {
 	html := dashboardHTML
 	for _, required := range []string{
@@ -1236,6 +1261,7 @@ func TestDashboardLocalesCatalog(t *testing.T) {
 		"trend.series.allHidden",
 		"card.tokenDetail",
 		"card.tokenDetailValues",
+		"table.account",
 		"card.input",
 		"card.output",
 		"card.cacheRead",

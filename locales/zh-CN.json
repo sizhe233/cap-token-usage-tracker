@@ -172,6 +172,7 @@
   "table.estimatedCost": "预估费用",
   "table.priceSource": "价格来源",
   "table.provider": "提供商",
+  "table.account": "账号",
   "table.alias": "别名",
   "table.executor": "执行器",
   "table.authType": "认证类型",

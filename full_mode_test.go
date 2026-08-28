@@ -127,6 +127,7 @@ func TestFullModeSessionCreationIsBounded(t *testing.T) {
 
 func TestResourceDataRoutesAllowRedactedNormalMode(t *testing.T) {
 	config := testConfig(t)
+	config.SyncOnRecord = true
 	store, err := openStore(config)
 	if err != nil {
 		t.Fatal(err)
@@ -137,13 +138,17 @@ func TestResourceDataRoutesAllowRedactedNormalMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	now := nowUTC()
-	rate := ExchangeRateResponse{SchemaVersion: 1, Base: "USD", Quote: "CNY", Rate: 7.2, EffectiveAt: now, FetchedAt: now, Source: "test"}
-	runtime.exchangeRates = &exchangeRateService{cached: &rate, freshUntil: now.Add(time.Hour), staleUntil: now.Add(time.Hour), now: func() time.Time { return now }}
 	if _, err := runtime.registerManagement(registration); err != nil {
 		t.Fatal(err)
 	}
-
+	now := nowUTC()
+	if err := store.Record(normalizedUsage{
+		Dimensions:  Dimensions{Provider: "codex", Model: "gpt-test", Source: "https://api.openai.com/v1", Account: "user@example.com"},
+		RequestedAt: now.Add(-time.Minute),
+		Counters:    Counters{Requests: 1, InputTokens: 2, OutputTokens: 3, TotalTokens: 5},
+	}); err != nil {
+		t.Fatal(err)
+	}
 	call := func(method, path, session string) pluginapi.ManagementResponse {
 		t.Helper()
 		headers := http.Header{}
@@ -160,52 +165,43 @@ func TestResourceDataRoutesAllowRedactedNormalMode(t *testing.T) {
 		}
 		return response
 	}
-
 	for _, path := range []string{runtime.routes.dashboardPath, runtime.routes.fullDashboardPath} {
 		response := call(http.MethodGet, path, "")
 		if response.StatusCode != http.StatusOK || len(response.Body) == 0 {
 			t.Fatalf("public shell %s response = %+v", path, response)
 		}
 	}
-
-	paths := []string{
-		runtime.routes.resourceStatsPath,
-		runtime.routes.resourceStatsInitialPath,
-		runtime.routes.resourceStatsTrendPath,
-		runtime.routes.resourceStatsGroupsPath,
-		runtime.routes.resourceRequestsPath,
-		runtime.routes.resourceCostsPath,
-		runtime.routes.resourceExchangeRatePath,
-		runtime.routes.resourcePricesPath,
-		runtime.routes.resourcePreferencesPath,
-	}
+	paths := []string{runtime.routes.resourceStatsPath, runtime.routes.resourceStatsInitialPath, runtime.routes.resourceStatsTrendPath, runtime.routes.resourceStatsGroupsPath, runtime.routes.resourceRequestsPath, runtime.routes.resourceCostsPath, runtime.routes.resourceExchangeRatePath, runtime.routes.resourcePricesPath, runtime.routes.resourcePreferencesPath}
 	for _, path := range paths {
 		response := call(http.MethodGet, path, "")
 		if response.StatusCode != http.StatusOK {
 			t.Fatalf("normal resource %s status = %d body=%s", path, response.StatusCode, response.Body)
 		}
-		if strings.Contains(string(response.Body), `"account_ref"`) || strings.Contains(string(response.Body), `"api_key"`) || strings.Contains(string(response.Body), `"api_key_hash"`) || strings.Contains(string(response.Body), `"api_key_generation"`) || strings.Contains(string(response.Body), `"api_key_ref"`) || strings.Contains(string(response.Body), `"api_key_status"`) || strings.Contains(string(response.Body), `"api_keys"`) {
+		if strings.Contains(string(response.Body), "user@example.com") || strings.Contains(string(response.Body), `"account"`) || strings.Contains(string(response.Body), `"account_ref"`) || strings.Contains(string(response.Body), `"api_key"`) || strings.Contains(string(response.Body), `"api_key_hash"`) || strings.Contains(string(response.Body), `"api_key_generation"`) || strings.Contains(string(response.Body), `"api_key_ref"`) || strings.Contains(string(response.Body), `"api_key_status"`) || strings.Contains(string(response.Body), `"api_keys"`) {
 			t.Fatalf("normal resource %s returned sensitive identity fields: %s", path, response.Body)
 		}
 	}
-
 	session, err := runtime.createFullModeSession()
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, path := range paths {
-		if response := call(http.MethodGet, path, session); response.StatusCode != http.StatusOK {
+		response := call(http.MethodGet, path, session)
+		if response.StatusCode != http.StatusOK {
 			t.Fatalf("valid session response from %s = %d body=%s", path, response.StatusCode, response.Body)
 		}
+		if path == runtime.routes.resourceStatsPath || path == runtime.routes.resourceStatsGroupsPath || path == runtime.routes.resourceRequestsPath {
+			if !strings.Contains(string(response.Body), "user@example.com") || !strings.Contains(string(response.Body), "https://api.openai.com/v1") {
+				t.Fatalf("full account/source response from %s: %s", path, response.Body)
+			}
+		}
 	}
-
 	runtime.revokeFullModeSession(session)
 	for _, path := range paths {
 		if response := call(http.MethodGet, path, session); response.StatusCode != http.StatusOK {
 			t.Fatalf("redacted resource rejected revoked session for %s: status=%d body=%s", path, response.StatusCode, response.Body)
 		}
 	}
-
 	expiredSession, err := runtime.createFullModeSession()
 	if err != nil {
 		t.Fatal(err)
@@ -223,7 +219,6 @@ func TestResourceDataRoutesAllowRedactedNormalMode(t *testing.T) {
 			t.Fatalf("redacted resource rejected expired session for %s: status=%d body=%s", path, response.StatusCode, response.Body)
 		}
 	}
-
 	for _, path := range []string{runtime.routes.fullModeDataPath, runtime.routes.fullModePricesPath, runtime.routes.fullModeBackupPath, runtime.routes.fullModeResetPath} {
 		if response := call(http.MethodGet, path, ""); response.StatusCode != http.StatusUnauthorized {
 			t.Fatalf("full-mode resource %s accepted without session: status=%d body=%s", path, response.StatusCode, response.Body)

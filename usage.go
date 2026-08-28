@@ -117,10 +117,6 @@ func safeUsageSourceLabel(value string) bool {
 }
 
 func canonicalUsageSource(dimensions Dimensions) string {
-	return canonicalUsageSourceWithIdentity(dimensions, "", "")
-}
-
-func canonicalUsageSourceWithIdentity(dimensions Dimensions, authProvider, authAccount string) string {
 	source := safeUsageSource(dimensions.Source, "", dimensions.Provider, dimensions.ExecutorType, dimensions.AuthType)
 	if isOpenAICompatibleProvider(dimensions.Provider, dimensions.ExecutorType) {
 		const prefix = "openai-compatible-"

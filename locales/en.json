@@ -172,6 +172,7 @@
   "table.estimatedCost": "Estimated cost",
   "table.priceSource": "Price source",
   "table.provider": "Provider",
+  "table.account": "Account",
   "table.alias": "Alias",
   "table.executor": "Executor",
   "table.authType": "Auth type",

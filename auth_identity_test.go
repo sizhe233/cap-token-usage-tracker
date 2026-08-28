@@ -14,11 +14,11 @@ func TestIdentityFromRuntimeMetadataBuildsSafeProviderAccountLabel(t *testing.T)
 		usage    Dimensions
 		want     usageIdentity
 	}{
-		{name: "codex email ignored", metadata: authRuntimeMetadata{Provider: "codex", Email: "user@example.com"}, want: usageIdentity{Provider: "Codex", Account: ""}},
-		{name: "antigravity email ignored", metadata: authRuntimeMetadata{Provider: "antigravity", Email: "user@example.com"}, want: usageIdentity{Provider: "Antigravity", Account: ""}},
-		{name: "xai email ignored", metadata: authRuntimeMetadata{Provider: "xai", Email: "user@example.com"}, want: usageIdentity{Provider: "Grok", Account: ""}},
-		{name: "oauth account ignored", metadata: authRuntimeMetadata{Provider: "codex", AccountType: "oauth", Account: "oauth-account"}, want: usageIdentity{Provider: "Codex", Account: ""}},
-		{name: "label ignored", metadata: authRuntimeMetadata{Provider: "custom", Label: "team-account"}, want: usageIdentity{Provider: "custom", Account: ""}},
+		{name: "codex email", metadata: authRuntimeMetadata{Provider: "codex", Email: "user@example.com"}, want: usageIdentity{Provider: "Codex", Account: "user@example.com"}},
+		{name: "antigravity email", metadata: authRuntimeMetadata{Provider: "antigravity", Email: "user@example.com"}, want: usageIdentity{Provider: "Antigravity", Account: "user@example.com"}},
+		{name: "xai email", metadata: authRuntimeMetadata{Provider: "xai", Email: "user@example.com"}, want: usageIdentity{Provider: "Grok", Account: "user@example.com"}},
+		{name: "oauth account", metadata: authRuntimeMetadata{Provider: "codex", AccountType: "oauth", Account: "oauth-account"}, want: usageIdentity{Provider: "Codex", Account: "oauth-account"}},
+		{name: "label fallback", metadata: authRuntimeMetadata{Provider: "custom", Label: "team-account"}, want: usageIdentity{Provider: "custom", Account: "team-account"}},
 		{name: "api key account ignored", metadata: authRuntimeMetadata{Provider: "codex", AccountType: "api_key", Account: "sk-secret-1234567890"}, want: usageIdentity{Provider: "Codex", Account: ""}},
 		{name: "source fallback ignored", metadata: authRuntimeMetadata{Provider: "codex"}, usage: Dimensions{Source: "https://user:secret@example.com/v1/?api_key=secret"}, want: usageIdentity{Provider: "Codex", Account: ""}},
 	}
@@ -35,14 +35,14 @@ func TestAuthIdentityResolverCachesSanitizedMetadataAndUsesCurrentSourceFallback
 	var calls atomic.Int32
 	resolver := newAuthIdentityResolver(func(authIndex string) (authRuntimeMetadata, error) {
 		calls.Add(1)
-		return authRuntimeMetadata{Provider: "codex", AccountType: "api_key", Account: "sk-secret-1234567890"}, nil
+		return authRuntimeMetadata{Provider: "codex", Email: "user@example.com", AccountType: "api_key", Account: "sk-secret-1234567890"}, nil
 	})
 	first, err := resolver.resolve("stable-auth-index", Dimensions{Source: "first"})
-	if err != nil || first != (usageIdentity{Provider: "Codex"}) {
+	if err != nil || first != (usageIdentity{Provider: "Codex", Account: "user@example.com"}) {
 		t.Fatalf("first resolve = %+v, %v", first, err)
 	}
 	second, err := resolver.resolve("stable-auth-index", Dimensions{Source: "second"})
-	if err != nil || second != (usageIdentity{Provider: "Codex"}) {
+	if err != nil || second != (usageIdentity{Provider: "Codex", Account: "user@example.com"}) {
 		t.Fatalf("cached resolve = %+v, %v", second, err)
 	}
 	if calls.Load() != 1 {
@@ -92,7 +92,7 @@ func TestAuthIdentityResolverCoalescesConcurrentLookups(t *testing.T) {
 		}
 	}
 	for identity := range results {
-		if identity != (usageIdentity{Provider: "Antigravity"}) {
+		if identity != (usageIdentity{Provider: "Antigravity", Account: "user@example.com"}) {
 			t.Fatalf("identity = %+v", identity)
 		}
 	}
@@ -102,11 +102,13 @@ func TestAuthIdentityResolverNegativeCachesFailures(t *testing.T) {
 	var calls atomic.Int32
 	resolver := newAuthIdentityResolver(func(authIndex string) (authRuntimeMetadata, error) {
 		calls.Add(1)
-		return authRuntimeMetadata{}, errors.New("runtime lookup failed")
+		return authRuntimeMetadata{}, errors.New("runtime lookup failed for " + authIndex)
 	})
 	for range 2 {
 		if _, err := resolver.resolve("stable-auth-index", Dimensions{}); err == nil {
 			t.Fatal("lookup failure was not returned")
+		} else if err.Error() != "host runtime auth lookup failed" {
+			t.Fatalf("lookup error leaked host details: %v", err)
 		}
 	}
 	if calls.Load() != 1 {

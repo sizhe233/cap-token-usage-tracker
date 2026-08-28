@@ -1949,7 +1949,7 @@ func migrateUsageSources(hours, requests *bolt.Bucket, version uint64) error {
 					return fmt.Errorf("decode counters for source migration: %w", err)
 				}
 				sanitized := dimensions.Dimensions
-				sanitized.Source = canonicalUsageSourceWithIdentity(sanitized, dimensions.AuthProvider, dimensions.AuthAccount)
+				sanitized.Source = canonicalUsageSource(sanitized)
 				changed = true
 				combined := merged[sanitized]
 				combined.add(counters)
@@ -1997,7 +1997,7 @@ func migrateUsageSources(hours, requests *bolt.Bucket, version uint64) error {
 				return fmt.Errorf("decode request for source migration: %w", err)
 			}
 			current := toCurrentRequest(request)
-			current.Source = canonicalUsageSourceWithIdentity(current.Dimensions, request.AuthProvider, request.AuthAccount)
+			current.Source = canonicalUsageSource(current.Dimensions)
 			encoded, err := json.Marshal(current)
 			if err != nil {
 				return err

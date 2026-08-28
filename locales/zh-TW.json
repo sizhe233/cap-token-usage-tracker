@@ -172,6 +172,7 @@
   "table.estimatedCost": "預估費用",
   "table.priceSource": "價格來源",
   "table.provider": "提供商",
+  "table.account": "帳號",
   "table.alias": "別名",
   "table.executor": "執行器",
   "table.authType": "認證類型",

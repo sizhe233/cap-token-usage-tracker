@@ -172,6 +172,7 @@
   "table.estimatedCost": "Оценочная стоимость",
   "table.priceSource": "Источник цены",
   "table.provider": "Провайдер",
+  "table.account": "Аккаунт",
   "table.alias": "Псевдоним",
   "table.executor": "Исполнитель",
   "table.authType": "Тип авторизации",

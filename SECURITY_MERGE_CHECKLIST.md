@@ -20,8 +20,10 @@ This fork is pinned to the audited upstream baseline `v2.0.3` (`4bcf440844bbfef4
 
 - API-key tracking remains disabled by default (`api_key_secret: ""`).
 - Explicit API-key tracking secrets must be at least 32 bytes. The legacy public secret `123456` must remain rejected.
-- Do not persist prompts, request bodies, response bodies, failure bodies, response headers, raw Auth IDs, raw Auth Indexes, account e-mails, account labels, or OAuth account identifiers.
-- Do not call `host.auth.get_runtime` or any credential save/import API.
+- Do not persist prompts, request bodies, response bodies, failure bodies, response headers, raw Auth IDs, raw Auth Indexes, credential filenames, credential paths, or credential JSON.
+- Newly ingested records may retain only sanitized account display metadata for full-mode stats/groups/requests; normal responses must redact `account`. `account-stats` remains opaque and returns only `account_ref`.
+- The account display path may call only `host.auth.get_runtime`; never call `host.auth.get`, credential save/import APIs, or parse filenames for identity.
+- Do not emit or infer `plan_type` without an authoritative CPA usage contract field.
 - `Source` remains allowlisted. Unknown values, account-like strings, and token-like strings collapse to a canonical provider address or provider name.
 
 ## Network and filesystem
