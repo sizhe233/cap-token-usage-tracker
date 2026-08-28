@@ -15,7 +15,9 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v7/sdk/pluginapi"
 )
 
-const fullModeSessionTTL = 5 * time.Minute
+const dashboardSessionTTL = 5 * time.Minute
+
+const fullModeSessionTTL = dashboardSessionTTL
 
 const (
 	fullModeUploadTTL       = fullModeSessionTTL
@@ -24,10 +26,18 @@ const (
 )
 
 const maxFullModeUploadsPerSession = 2
-const maxFullModeSessions = 8
+const maxFullModeSessions = 64
+
+type dashboardSessionScope uint8
+
+const (
+	dashboardSessionNormal dashboardSessionScope = iota + 1
+	dashboardSessionFull
+)
 
 type fullModeSession struct {
 	expiresAt time.Time
+	scope     dashboardSessionScope
 }
 
 type fullModeUpload struct {
@@ -37,7 +47,10 @@ type fullModeUpload struct {
 	chunks      map[int]string
 }
 
-func (r *pluginRuntime) createFullModeSession() (string, error) {
+func (r *pluginRuntime) createDashboardSession(scope dashboardSessionScope) (string, error) {
+	if scope != dashboardSessionNormal && scope != dashboardSessionFull {
+		return "", errors.New("invalid dashboard session scope")
+	}
 	var tokenBytes [32]byte
 	if _, err := rand.Read(tokenBytes[:]); err != nil {
 		return "", err
@@ -55,20 +68,24 @@ func (r *pluginRuntime) createFullModeSession() (string, error) {
 		}
 	}
 	if len(r.fullModeSessions) >= maxFullModeSessions {
-		return "", errors.New("too many active full-mode sessions")
+		return "", errors.New("too many active dashboard sessions")
 	}
-	r.fullModeSessions[hash] = fullModeSession{expiresAt: now.Add(fullModeSessionTTL)}
+	r.fullModeSessions[hash] = fullModeSession{expiresAt: now.Add(dashboardSessionTTL), scope: scope}
 	return base64.RawURLEncoding.EncodeToString(tokenBytes[:]), nil
 }
 
-func (r *pluginRuntime) validFullModeSession(raw string) bool {
+func (r *pluginRuntime) createFullModeSession() (string, error) {
+	return r.createDashboardSession(dashboardSessionFull)
+}
+
+func (r *pluginRuntime) dashboardSessionScope(raw string) (dashboardSessionScope, bool) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" || len(raw) > 128 {
-		return false
+		return 0, false
 	}
 	tokenBytes, err := base64.RawURLEncoding.DecodeString(raw)
 	if err != nil || len(tokenBytes) != 32 {
-		return false
+		return 0, false
 	}
 	want := sha256.Sum256(tokenBytes)
 	now := nowUTC()
@@ -80,11 +97,26 @@ func (r *pluginRuntime) validFullModeSession(raw string) bool {
 		}
 	}
 	for key, session := range r.fullModeSessions {
-		if subtle.ConstantTimeCompare(key[:], want[:]) == 1 {
-			return now.Before(session.expiresAt)
+		if subtle.ConstantTimeCompare(key[:], want[:]) != 1 || !now.Before(session.expiresAt) {
+			continue
 		}
+		scope := session.scope
+		if scope == 0 {
+			scope = dashboardSessionFull
+		}
+		return scope, true
 	}
-	return false
+	return 0, false
+}
+
+func (r *pluginRuntime) validDashboardSession(raw string) bool {
+	_, ok := r.dashboardSessionScope(raw)
+	return ok
+}
+
+func (r *pluginRuntime) validFullModeSession(raw string) bool {
+	scope, ok := r.dashboardSessionScope(raw)
+	return ok && scope == dashboardSessionFull
 }
 
 func (r *pluginRuntime) revokeFullModeSession(raw string) {
@@ -228,12 +260,20 @@ func (r *pluginRuntime) fullModeRestoreResponse(request pluginapi.ManagementRequ
 	return r.fullModeStagedPayloadResponse(request, maxDatabaseBackupBytes, "application/octet-stream", r.restoreResponse)
 }
 
-func (r *pluginRuntime) fullModeSessionResponse() (pluginapi.ManagementResponse, error) {
-	token, err := r.createFullModeSession()
-	if err != nil {
-		return jsonResponse(http.StatusInternalServerError, map[string]any{"error": "could not create full-mode session"}), nil
+func (r *pluginRuntime) fullModeSessionResponse(request pluginapi.ManagementRequest) (pluginapi.ManagementResponse, error) {
+	scope := dashboardSessionFull
+	if strings.EqualFold(strings.TrimSpace(request.Query.Get("scope")), "normal") {
+		scope = dashboardSessionNormal
 	}
-	return jsonResponse(http.StatusOK, map[string]string{"session": token}), nil
+	token, err := r.createDashboardSession(scope)
+	if err != nil {
+		return jsonResponse(http.StatusInternalServerError, map[string]any{"error": "could not create dashboard session"}), nil
+	}
+	mode := "full"
+	if scope == dashboardSessionNormal {
+		mode = "normal"
+	}
+	return jsonResponse(http.StatusOK, map[string]string{"session": token, "scope": mode}), nil
 }
 
 func (r *pluginRuntime) fullModeDataResponse(request pluginapi.ManagementRequest) (pluginapi.ManagementResponse, error) {

@@ -207,12 +207,15 @@ func (r *pluginRuntime) dispatchManagement(request pluginapi.ManagementRequest, 
 	if routes.pluginID == "" {
 		return jsonResponse(http.StatusServiceUnavailable, map[string]any{"error": "management routes are not registered"}), nil
 	}
+	if resourceDataRoute(request.Path, routes) && strings.EqualFold(request.Method, http.MethodGet) && !r.validDashboardSession(fullModeSessionFromRequest(request)) {
+		return jsonResponse(http.StatusUnauthorized, map[string]string{"error": "dashboard session is missing or expired"}), nil
+	}
 	switch request.Path {
 	case routes.fullModeSessionPath:
 		if !strings.EqualFold(request.Method, http.MethodPost) {
 			return methodNotAllowed(http.MethodPost), nil
 		}
-		return r.fullModeSessionResponse()
+		return r.fullModeSessionResponse(request)
 	case routes.accountStatsPath:
 		if !strings.EqualFold(request.Method, http.MethodPost) {
 			return methodNotAllowed(http.MethodPost), nil
@@ -362,6 +365,22 @@ func (r *pluginRuntime) dispatchManagement(request pluginapi.ManagementRequest, 
 	}
 }
 
+func resourceDataRoute(path string, routes registeredRoutes) bool {
+	switch path {
+	case routes.resourceStatsPath,
+		routes.resourceStatsInitialPath,
+		routes.resourceStatsTrendPath,
+		routes.resourceStatsGroupsPath,
+		routes.resourceRequestsPath,
+		routes.resourceCostsPath,
+		routes.resourceExchangeRatePath,
+		routes.resourcePricesPath,
+		routes.resourcePreferencesPath:
+		return true
+	default:
+		return false
+	}
+}
 func (r *pluginRuntime) accountStatsResponse(request pluginapi.ManagementRequest) (pluginapi.ManagementResponse, error) {
 	contentType := strings.TrimSpace(request.Headers.Get("Content-Type"))
 	if contentType == "" {

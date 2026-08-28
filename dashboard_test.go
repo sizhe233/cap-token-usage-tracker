@@ -53,8 +53,6 @@ func TestDashboardUsesBoundedSafeRendering(t *testing.T) {
 		`updated_at:base.updated_at||''`,
 		"replaceChildren.apply",
 		"Math.max.apply",
-		"localStorage",
-		"sessionStorage",
 		"data-theme-value",
 		"themePopover",
 		"connectButton",
@@ -609,8 +607,6 @@ func TestDashboardUsesExactBackendCostsAndPricingSync(t *testing.T) {
 	for _, forbidden := range []string{
 		`costFor(name,input,output)`,
 		`costFor(`,
-		`localStorage`,
-		`sessionStorage`,
 		`fetch('https://models.dev`,
 		`fetch("https://models.dev`,
 		`fetch('https://open.er-api.com`,
@@ -770,55 +766,30 @@ func TestDashboardResponseHeaders(t *testing.T) {
 	}
 }
 
-func TestDashboardUsesManagementCenterCapabilityBridge(t *testing.T) {
-	for _, required := range []string{
-		`protocol:'cliproxy-plugin-capability-v1'`,
-		`type:'request'`,
-		`event.source!==window.parent`,
-		`event.origin!==window.location.origin`,
-		`message.pluginID!==pluginID`,
-		`message.requestID!==pluginCapabilityRequestID`,
-		`crypto.getRandomValues(bytes)`,
-		`window.parent.postMessage`,
-		`if(!fullModePage||event.source!==window.parent`,
-		`'X-Full-Mode-Session':fullModeSession`,
-		`if(response.status===401&&fullModeSession&&!isSessionIssue){expireFullModeSession();}`,
-		`id="fullModeDialog"`,
-		`id="fullModeKeyInput"`,
-		`type="password" autocomplete="off"`,
-		`managementBase+'/full-mode/session'`,
-		`function unlockFullMode()`,
-		`if(window.parent===window){openFullModeDialog();return;}`,
-		`pluginCapabilityTimer=setTimeout(function(){pluginCapabilityRequestID='';openFullModeDialog();},10000)`,
-	} {
-		if !strings.Contains(fullDashboardHTML, required) {
-			t.Fatalf("full dashboard missing capability bridge contract %q", required)
+func TestDashboardReusesManagementCenterLoginForScopedSessions(t *testing.T) {
+	for _, html := range []string{dashboardHTML, fullDashboardHTML} {
+		for _, required := range []string{
+			`localStorage.getItem('cli-proxy-auth')`,
+			`cli-proxy-api-webui::secure-storage|`,
+			`managementBase+'/full-mode/session?scope='`,
+			`'Authorization':'Bearer '+managementKey`,
+			`'X-Full-Mode-Session':fullModeSession`,
+			`managementKey=''`,
+			`async function acquireDashboardSession()`,
+			`await acquireDashboardSession()`,
+		} {
+			if !strings.Contains(html, required) {
+				t.Fatalf("dashboard missing login reuse contract %q", required)
+			}
 		}
 	}
-	for _, forbidden := range []string{`localStorage`, `sessionStorage`, `#session=`} {
+	for _, forbidden := range []string{`sessionStorage`, `#session=`, `id="fullModeDialog"`, `fullModeKeyInput`, `function unlockFullMode()`} {
 		if strings.Contains(dashboardHTML, forbidden) || strings.Contains(fullDashboardHTML, forbidden) {
 			t.Fatalf("dashboard contains forbidden authentication pattern %q", forbidden)
 		}
 	}
-	for _, forbidden := range []string{`id="fullModeDialog"`, `fullModeKeyInput`, `managementBase+'/full-mode/session'`, `type="password"`} {
-		if strings.Contains(dashboardHTML, forbidden) {
-			t.Fatalf("normal dashboard contains full-mode authentication pattern %q", forbidden)
-		}
-	}
-	if !strings.Contains(dashboardHTML, `if(!fullModePage||event.source!==window.parent`) {
-		t.Fatal("normal dashboard must reject capability responses when not in full mode")
-	}
-	if !strings.Contains(dashboardHTML, `function startDashboard(){if(fullModePage&&!fullModeSession){requestPluginCapability();return;}`) {
-		t.Fatal("normal dashboard must load redacted data without a capability session")
-	}
-	if !strings.Contains(fullDashboardHTML, `function startDashboard(){if(fullModePage&&!fullModeSession){requestPluginCapability();return;}`) {
-		t.Fatal("full dashboard must retain the capability session guard")
-	}
-	if strings.Contains(dashboardHTML, `function startDashboard(){if(!fullModeSession){requestPluginCapability();return;}`) {
-		t.Fatal("normal dashboard must not wait unconditionally for a capability session")
-	}
-	if !strings.Contains(dashboardHTML, `if(fullModePage&&fullModeSession&&`) {
-		t.Fatal("dashboard API must keep full-mode session use page-scoped")
+	if !strings.Contains(dashboardHTML, `function dashboardSessionScope(){return fullModePage?'full':'normal';}`) || !strings.Contains(fullDashboardHTML, `function dashboardSessionScope(){return fullModePage?'full':'normal';}`) {
+		t.Fatal("dashboards must request scope matching their mode")
 	}
 	if !strings.Contains(dashboardHTML, `window.location.assign(resourceBase+'/full-dashboard')`) {
 		t.Fatal("normal dashboard must navigate to the separate full dashboard")
@@ -845,8 +816,8 @@ func TestDashboardUsesManagementCenterCapabilityBridge(t *testing.T) {
 			t.Fatalf("full dashboard missing %q", required)
 		}
 	}
-	if strings.Contains(fullDashboardHTML, `sensitive_data":[]`) {
-		t.Fatal("full dashboard HTML must not embed protected data")
+	if strings.Contains(fullDashboardHTML, `sensitive_data:[]`) {
+		t.Fatal("full dashboard must not embed sensitive data")
 	}
 }
 

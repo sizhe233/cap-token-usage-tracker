@@ -173,22 +173,31 @@ func TestResourceDataRoutesAllowRedactedNormalMode(t *testing.T) {
 	}
 	paths := []string{runtime.routes.resourceStatsPath, runtime.routes.resourceStatsInitialPath, runtime.routes.resourceStatsTrendPath, runtime.routes.resourceStatsGroupsPath, runtime.routes.resourceRequestsPath, runtime.routes.resourceCostsPath, runtime.routes.resourceExchangeRatePath, runtime.routes.resourcePricesPath, runtime.routes.resourcePreferencesPath}
 	for _, path := range paths {
-		response := call(http.MethodGet, path, "")
+		if response := call(http.MethodGet, path, ""); response.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("anonymous resource %s status = %d body=%s", path, response.StatusCode, response.Body)
+		}
+	}
+	normalSession, err := runtime.createDashboardSession(dashboardSessionNormal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range paths {
+		response := call(http.MethodGet, path, normalSession)
 		if response.StatusCode != http.StatusOK {
-			t.Fatalf("normal resource %s status = %d body=%s", path, response.StatusCode, response.Body)
+			t.Fatalf("normal session response from %s = %d body=%s", path, response.StatusCode, response.Body)
 		}
 		if strings.Contains(string(response.Body), "user@example.com") || strings.Contains(string(response.Body), `"account"`) || strings.Contains(string(response.Body), `"account_ref"`) || strings.Contains(string(response.Body), `"api_key"`) || strings.Contains(string(response.Body), `"api_key_hash"`) || strings.Contains(string(response.Body), `"api_key_generation"`) || strings.Contains(string(response.Body), `"api_key_ref"`) || strings.Contains(string(response.Body), `"api_key_status"`) || strings.Contains(string(response.Body), `"api_keys"`) {
 			t.Fatalf("normal resource %s returned sensitive identity fields: %s", path, response.Body)
 		}
 	}
-	session, err := runtime.createFullModeSession()
+	fullSession, err := runtime.createFullModeSession()
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, path := range paths {
-		response := call(http.MethodGet, path, session)
+		response := call(http.MethodGet, path, fullSession)
 		if response.StatusCode != http.StatusOK {
-			t.Fatalf("valid session response from %s = %d body=%s", path, response.StatusCode, response.Body)
+			t.Fatalf("full session response from %s = %d body=%s", path, response.StatusCode, response.Body)
 		}
 		if path == runtime.routes.resourceStatsPath || path == runtime.routes.resourceStatsGroupsPath || path == runtime.routes.resourceRequestsPath {
 			if !strings.Contains(string(response.Body), "user@example.com") || !strings.Contains(string(response.Body), "https://api.openai.com/v1") {
@@ -196,27 +205,20 @@ func TestResourceDataRoutesAllowRedactedNormalMode(t *testing.T) {
 			}
 		}
 	}
-	runtime.revokeFullModeSession(session)
-	for _, path := range paths {
-		if response := call(http.MethodGet, path, session); response.StatusCode != http.StatusOK {
-			t.Fatalf("redacted resource rejected revoked session for %s: status=%d body=%s", path, response.StatusCode, response.Body)
+	for _, path := range []string{runtime.routes.fullModeDataPath, runtime.routes.fullModePricesPath, runtime.routes.fullModeBackupPath, runtime.routes.fullModeResetPath} {
+		if response := call(http.MethodGet, path, normalSession); response.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("normal session accessed full-mode resource %s: status=%d body=%s", path, response.StatusCode, response.Body)
 		}
 	}
-	expiredSession, err := runtime.createFullModeSession()
-	if err != nil {
-		t.Fatal(err)
-	}
-	token, err := base64.RawURLEncoding.DecodeString(expiredSession)
-	if err != nil {
-		t.Fatal(err)
-	}
-	hash := sha256.Sum256(token)
-	runtime.fullModeMu.Lock()
-	runtime.fullModeSessions[hash] = fullModeSession{expiresAt: nowUTC().Add(-time.Second)}
-	runtime.fullModeMu.Unlock()
 	for _, path := range paths {
-		if response := call(http.MethodGet, path, expiredSession); response.StatusCode != http.StatusOK {
-			t.Fatalf("redacted resource rejected expired session for %s: status=%d body=%s", path, response.StatusCode, response.Body)
+		if response := call(http.MethodGet, path, fullSession); response.StatusCode != http.StatusOK {
+			t.Fatalf("full session did not access dashboard resource %s: status=%d body=%s", path, response.StatusCode, response.Body)
+		}
+	}
+	runtime.revokeFullModeSession(normalSession)
+	for _, path := range paths {
+		if response := call(http.MethodGet, path, normalSession); response.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("revoked session accepted for %s: status=%d body=%s", path, response.StatusCode, response.Body)
 		}
 	}
 	for _, path := range []string{runtime.routes.fullModeDataPath, runtime.routes.fullModePricesPath, runtime.routes.fullModeBackupPath, runtime.routes.fullModeResetPath} {
@@ -235,9 +237,14 @@ func TestNormalPreferencesCanPersistOnlyNonSensitiveValues(t *testing.T) {
 	runtime := &pluginRuntime{store: store, config: config}
 	defer runtime.shutdown()
 	runtime.routes = registeredRoutes{pluginID: "test", resourcePreferencesPath: "/v0/resource/plugins/test/preferences"}
+	session, err := runtime.createDashboardSession(dashboardSessionNormal)
+	if err != nil {
+		t.Fatal(err)
+	}
 	request, err := json.Marshal(pluginapi.ManagementRequest{
-		Method: http.MethodGet,
-		Path:   runtime.routes.resourcePreferencesPath,
+		Method:  http.MethodGet,
+		Path:    runtime.routes.resourcePreferencesPath,
+		Headers: http.Header{"X-Full-Mode-Session": []string{session}},
 		Query: map[string][]string{
 			"save":                  {"1"},
 			"request_page_size":     {"25"},

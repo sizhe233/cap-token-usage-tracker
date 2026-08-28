@@ -112,6 +112,10 @@ func TestAPIKeyTrackingRedactionRevealFilteringAndBackup(t *testing.T) {
 		}
 		return response
 	}
+	normalSession, err := runtime.createDashboardSession(dashboardSessionNormal)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	for _, path := range []string{
 		runtime.routes.resourceStatsPath,
@@ -132,7 +136,7 @@ func TestAPIKeyTrackingRedactionRevealFilteringAndBackup(t *testing.T) {
 			query.Set("offset", "0")
 			query.Set("limit", "100")
 		}
-		response := call(path, query, "")
+		response := call(path, query, normalSession)
 		if response.StatusCode != http.StatusOK {
 			t.Fatalf("normal resource %s status = %d body=%s", path, response.StatusCode, response.Body)
 		}
@@ -208,8 +212,8 @@ func TestAPIKeyTrackingRedactionRevealFilteringAndBackup(t *testing.T) {
 		t.Fatalf("filtered costs: status=%d body=%s", filteredCosts.StatusCode, filteredCosts.Body)
 	}
 	for _, path := range []string{runtime.routes.resourceStatsPath, runtime.routes.resourceStatsInitialPath, runtime.routes.resourceStatsTrendPath, runtime.routes.resourceStatsGroupsPath, runtime.routes.resourceRequestsPath, runtime.routes.resourceCostsPath} {
-		if response := call(path, filterQuery, ""); response.StatusCode != http.StatusForbidden {
-			t.Fatalf("unauthenticated ref filter %s status = %d", path, response.StatusCode)
+		if response := call(path, filterQuery, ""); response.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("anonymous ref filter %s status = %d", path, response.StatusCode)
 		}
 		if response := call(path, url.Values{"range": {"24h"}, "api_key_ref": {"INVALID"}}, session); response.StatusCode != http.StatusBadRequest {
 			t.Fatalf("invalid ref filter %s status = %d body=%s", path, response.StatusCode, response.Body)
@@ -490,7 +494,11 @@ func TestEnabledTrackingMarksMissingHostAPIKeyWithoutExposingIdentity(t *testing
 	if fullRequests.StatusCode != http.StatusOK || json.Unmarshal(fullRequests.Body, &page) != nil || len(page.Items) != 1 || page.Items[0].APIKeyStatus != apiKeyStatusSourceMissing {
 		t.Fatalf("full requests = %d %s", fullRequests.StatusCode, fullRequests.Body)
 	}
-	ordinary := call(runtime.routes.resourceStatsPath, "")
+	normalSession, err := runtime.createDashboardSession(dashboardSessionNormal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ordinary := call(runtime.routes.resourceStatsPath, normalSession)
 	for _, forbidden := range []string{`"api_key"`, `"api_key_hash"`, `"api_key_generation"`, `"api_key_ref"`, `"api_key_status"`, apiKeyStatusSourceMissing} {
 		if bytes.Contains(ordinary.Body, []byte(forbidden)) {
 			t.Fatalf("ordinary response leaked %q: %s", forbidden, ordinary.Body)

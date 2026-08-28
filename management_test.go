@@ -683,12 +683,12 @@ func TestManagementIgnoresLegacyAuthenticationIdentityParameters(t *testing.T) {
 func TestDashboardSecurityContract(t *testing.T) {
 	response := dashboardResponse()
 	html := string(response.Body)
-	for _, required := range []string{"/v0/resource/plugins/", "cliproxy-plugin-capability-v1", "X-Full-Mode-Session", "textContent", "replaceChildren", "load().catch"} {
+	for _, required := range []string{"/v0/resource/plugins/", "cli-proxy-auth", "X-Full-Mode-Session", "textContent", "replaceChildren", "load().catch"} {
 		if !strings.Contains(html, required) {
 			t.Fatalf("dashboard missing %q", required)
 		}
 	}
-	for _, forbidden := range []string{"localStorage", "sessionStorage", "type=\"password\"", "managementBase+'/full-mode/session'", "connectButton", "logoutButton", "fetch('stats')", `fetch("stats")`} {
+	for _, forbidden := range []string{"sessionStorage", "type=\"password\"", "connectButton", "logoutButton", "fetch('stats')", `fetch("stats")`} {
 		if strings.Contains(html, forbidden) {
 			t.Fatalf("dashboard contains forbidden pattern %q", forbidden)
 		}
