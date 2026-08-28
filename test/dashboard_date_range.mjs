@@ -108,7 +108,18 @@ try {
         throw new Error(`last 30 days ${boundary} must start at local midnight, got ${await button.textContent()}`);
       }
     }
-
+    const presetResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname === `${resourceBase}/stats/initial`
+        && url.searchParams.get('start') === '2026-07-24T00:00:00.000Z';
+    });
+    await page.locator('#confirmDateRange').click();
+    const preset = new URL((await presetResponse).url());
+    if (preset.searchParams.get('end') !== '2026-08-24T00:00:00.000Z') {
+      throw new Error(`expected quick range end=2026-08-24T00:00:00.000Z, got ${preset.searchParams.get('end')}`);
+    }
+    await page.locator('#rangeButton').click();
+    await page.locator('[data-range-preset="last_30_days"]').click();
     await page.locator('#startTimeButton').click();
     await setTimePickerValue(page, 'start', { hour: '01', minute: '02', second: '03' });
     const confirmedResponse = page.waitForResponse((response) => {
