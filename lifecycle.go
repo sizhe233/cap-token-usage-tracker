@@ -157,10 +157,6 @@ func (r *pluginRuntime) handleUsage(raw []byte) (map[string]any, error) {
 		return nil, withStatus(400, "%v", err)
 	}
 	authIndex := usage.authIndex
-	identityKey := usage.authIndex
-	if strings.TrimSpace(identityKey) == "" {
-		identityKey = usage.authID
-	}
 	r.resolveUsageIdentity(&usage)
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -169,11 +165,7 @@ func (r *pluginRuntime) handleUsage(raw []byte) (map[string]any, error) {
 	}
 	accountRef := accountReference(authIndex, r.accountTracking)
 	usage.authIndex = ""
-	usage.authID = ""
 	usage.Dimensions.AccountRef = accountRef
-	if authIndex == "" {
-		usage.Dimensions.AccountRef = accountReference(identityKey, r.accountTracking)
-	}
 	crypto := r.crypto
 	generation := r.apiKeyGeneration
 	if generation == 0 && crypto.enabled {

@@ -27,7 +27,7 @@ type authRuntimeMetadata struct {
 	Label       string
 }
 
-type authRuntimeLookup func(authKey string) (authRuntimeMetadata, error)
+type authRuntimeLookup func(authIndex string) (authRuntimeMetadata, error)
 
 type authIdentityResolver struct {
 	lookup authRuntimeLookup
@@ -187,27 +187,14 @@ func (r *pluginRuntime) setAuthRuntimeLookup(lookup authRuntimeLookup) {
 }
 
 func (r *pluginRuntime) resolveUsageIdentity(usage *normalizedUsage) {
-	if usage == nil {
+	if usage == nil || usage.authIndex == "" {
 		return
 	}
-	defer func() {
-		usage.authIndex = ""
-		usage.authID = ""
-	}()
-	authKey := strings.TrimSpace(usage.authIndex)
-	if authKey == "" {
-		authKey = strings.TrimSpace(usage.authID)
-	}
-	if authKey == "" {
-		return
-	}
+	defer func() { usage.authIndex = "" }()
 	r.mu.RLock()
 	resolver := r.authResolver
 	r.mu.RUnlock()
-	if resolver == nil {
-		return
-	}
-	identity, err := resolver.resolve(authKey, usage.Dimensions)
+	identity, err := resolver.resolve(usage.authIndex, usage.Dimensions)
 	if err != nil {
 		return
 	}

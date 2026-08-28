@@ -165,33 +165,6 @@ func TestAccountDisplayIsPersistedSeparatelyFromSource(t *testing.T) {
 	}
 }
 
-func TestAccountDisplayFallsBackToAuthIDWhenAuthIndexMissing(t *testing.T) {
-	config := testConfig(t)
-	config.SyncOnRecord = true
-	runtime := &pluginRuntime{}
-	defer runtime.shutdown()
-	if err := runtime.applyConfig(config); err != nil {
-		t.Fatal(err)
-	}
-	runtime.setAuthRuntimeLookup(func(authKey string) (authRuntimeMetadata, error) {
-		if authKey != "auth-id" {
-			t.Fatalf("lookup key = %q, want auth-id", authKey)
-		}
-		return authRuntimeMetadata{Provider: "codex", Email: "user@example.com"}, nil
-	})
-	raw, err := json.Marshal(pluginapi.UsageRecord{Provider: "codex", Model: "model", AuthID: "auth-id", RequestedAt: time.Now().UTC(), Detail: pluginapi.UsageDetail{TotalTokens: 1}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := runtime.handleUsage(raw); err != nil {
-		t.Fatal(err)
-	}
-	page, err := runtime.store.QueryRequests("24h", 0, 10, "")
-	if err != nil || len(page.Items) != 1 || page.Items[0].Account != "user@example.com" {
-		t.Fatalf("request page = %+v, err=%v", page, err)
-	}
-}
-
 func TestUsageHandleRPCPersistsCurrentSDKRecord(t *testing.T) {
 	_ = runtimeState.shutdown()
 	tempDir := t.TempDir()

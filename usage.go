@@ -18,7 +18,6 @@ type normalizedUsage struct {
 	TTFTNS      uint64
 	Counters    Counters
 	authIndex   string
-	authID      string
 }
 
 func decodeUsage(raw []byte, now time.Time) (normalizedUsage, error) {
@@ -56,12 +55,10 @@ func decodeUsage(raw []byte, now time.Time) (normalizedUsage, error) {
 	}
 
 	failed := firstBool(root, "Failed", "failed")
-
 	provider := normalizeDimension(firstString(root, "Provider", "provider"))
 	executorType := normalizeDimension(firstString(root, "ExecutorType", "executor_type"))
 	authType := normalizeDimension(firstString(root, "AuthType", "auth_type"))
 	apiKey := firstString(root, "APIKey", "api_key")
-	authID := strings.TrimSpace(firstString(root, "AuthID", "auth_id"))
 	return normalizedUsage{
 		Dimensions: Dimensions{
 			Provider:        provider,
@@ -80,7 +77,6 @@ func decodeUsage(raw []byte, now time.Time) (normalizedUsage, error) {
 		LatencyNS:   positiveDurationNS(root, "Latency", "latency", "latency_ns"),
 		TTFTNS:      positiveDurationNS(root, "TTFT", "ttft", "ttft_ns"),
 		authIndex:   strings.TrimSpace(firstString(root, "AuthIndex", "auth_index")),
-		authID:      authID,
 		Counters: Counters{
 			Requests:            1,
 			FailedRequests:      boolCount(failed),
