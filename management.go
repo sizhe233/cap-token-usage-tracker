@@ -446,7 +446,9 @@ func (r *pluginRuntime) statsResponse(request pluginapi.ManagementRequest) (plug
 		return jsonResponse(status, map[string]any{"error": err.Error()}), nil
 	}
 	_, generations := r.store.APIKeyCryptoState()
-	return r.sensitiveJSONResponse(http.StatusOK, &stats, fullMode, r.crypto, generations), nil
+	response := r.sensitiveJSONResponse(http.StatusOK, &stats, fullMode, r.crypto, generations)
+	response.Headers.Set("X-CAP-Account-Diagnostics", encodeAccountIdentityDiagnostics(r.authDiagnostics.snapshot()))
+	return response, nil
 }
 
 func (r *pluginRuntime) statsFilter(request pluginapi.ManagementRequest, fullMode bool) (usageRange, usageFilter, error) {
